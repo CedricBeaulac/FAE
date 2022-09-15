@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 from numpy import *
 import seaborn as sns
+import matplotlib.pyplot as plt
 import skfda as fda
 from skfda import representation as representation
 import scipy
@@ -31,29 +32,27 @@ import os
 class FAE_vanilla(nn.Module):
     def __init__(self):
         super(FAE_vanilla, self).__init__()
-        self.fc1 = nn.Linear(n_basis, 80)
-        self.fc2 = nn.Linear(80, n_rep)
-        self.fc3 = nn.Linear(n_rep, 80)
-        self.fc4 = nn.Linear(80, n_basis)
-        self.dropout = nn.Dropout(0.1)
-
-    def forward(self, x):
+        self.fc1 = nn.Linear(n_basis, n_rep,bias=False)
+        #self.fc2 = nn.Linear(80, n_rep)
+        self.fc3 = nn.Linear(n_rep, n_basis,bias=False)
+        #self.fc4 = nn.Linear(80, n_basis)
+        #self.dropout = nn.Dropout(0.1)
+        self.activation = nn.Identity()
+    def forward(self, x, basis_fc):
         s = self.Project(x, basis_fc)
-        t = F.relu(self.fc1(s))
-        t = self.dropout(t)
-        rep = F.relu(self.fc2(t))
-        t = F.relu(self.fc3(rep))
-        t = self.dropout(t)
-        s_hat = F.relu(self.fc4(t))
+        rep = self.activation(self.fc1(s))
+        #t = self.dropout(t)
+        #rep = self.activation(self.fc2(t))
+        s_hat = self.activation(self.fc3(rep))
+        #t = self.dropout(t)
+        #s_hat = self.activation(self.fc4(t))
         x_hat = self.Revert(s_hat, basis_fc)
-        return x_hat, rep
-
+        return x_hat, rep, s, s_hat
     def Project(self, x, basis_fc):
         # basis_fc: n_time X nbasis
         # x: n_subject X n_time
         s = torch.matmul(x, torch.t(basis_fc))
         return s
-
     def Revert(self, x, basis_fc):
         f = torch.matmul(x, basis_fc)
         return f
@@ -98,14 +97,16 @@ class FAE_vanilla(nn.Module):
 #####################################
 # Load Data sets
 #####################################
+
 # Import dataset
-os.chdir('C:/Users/Sidi/Desktop/FAE_local/tecator')
-x_raw = pd.read_csv('Data/tecator.csv')
-tpts_raw = pd.read_csv('Data/tecator_tpts.csv')
+os.chdir('C:/FAE')
+x_raw = pd.read_csv('Datasets/tecator/tecator.csv')
+tpts_raw = pd.read_csv('Datasets/tecator/tecator_tpts.csv')
 
 # Prepare numpy/tensor data
 x_np = np.array(x_raw).astype(float)
 x = torch.tensor(x_np).float()
+x = x - torch.mean(x,0)
 
 # Rescale timestamp to [0,1]
 tpts_np = np.array(tpts_raw)
@@ -121,30 +122,48 @@ TrainData = x[0: round(len(x) * split.rate), :]
 TestData = x[round(len(x) * split.rate):, :]
 
 # Define data loaders; DataLoader is used to load the dataset for training
-train_loader = torch.utils.data.DataLoader(TrainData, batch_size=8, shuffle=True)
+train_loader = torch.utils.data.DataLoader(TrainData, batch_size=64, shuffle=True)
 test_loader = torch.utils.data.DataLoader(TestData)
 
 #####################################
 # Define the training procedure
 #####################################
 # training function
-def train(epoch, loss_function):  # do I need to include "loss_function", how about "optimizer"
+def train(epoch):  # do I need to include "loss_function", how about "optimizer" 
+    # It depends if you define train locally or not
     model.train()
     train_loss = 0  # ?
     for i, data in enumerate(train_loader):
+        optimizer.zero_grad()  # The gradients are set to zero
         data = data.to(device)
         input = data.type(torch.LongTensor)
-        output, rep = model(input.float())
-        loss = loss_function(output, input.float())
-
-        optimizer.zero_grad()  # The gradients are set to zero
+        out,rep ,s,s_hat = model(input.float(),basis_fc)
+        loss = loss_function(out, input.float())
         loss.backward()  # The gradient is computed and stored.
         optimizer.step()  # .step() performs parameter update
+        train_loss += loss
     return loss
+
+# training function
+def train_s(epoch):  # do I need to include "loss_function", how about "optimizer" 
+    # It depends if you define train locally or not
+    model.train()
+    train_loss = 0  # ?
+    for i, data in enumerate(train_loader):
+        optimizer.zero_grad()  # The gradients are set to zero
+        data = data.to(device)
+        input = data.type(torch.LongTensor)
+        out,rep ,s,s_hat = model(input.float(),basis_fc)
+        loss = loss_function(s, s_hat)
+        loss.backward()  # The gradient is computed and stored.
+        optimizer.step()  # .step() performs parameter update
+        train_loss += loss
+    return loss
+
 
 def pred(model, data):
     input = data.type(torch.LongTensor)
-    output, rep = model(input.float())
+    output, rep = model(input.float(),basis_fc)
     loss = loss_function(output, input.float())
     return output, rep, loss
 
@@ -152,7 +171,7 @@ def pred(model, data):
 # Model Training
 #####################################
 # Set up parameters
-n_basis = 150
+n_basis = 20
 n_rep = 10
 # Get basis functions evaluated
 bss = representation.basis.BSpline(n_basis=n_basis, order=4)
@@ -164,18 +183,47 @@ model = FAE_vanilla()
 # Validation using MSE Loss function
 loss_function = nn.MSELoss()
 # Using an Adam Optimizer with lr = 0.1
-optimizer = optim.Adam(model.parameters(), lr=1e-1, weight_decay=1e-8)
+optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-8)
 # Set to CPU/GPU
 device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
-epochs = 200
+epochs = 250
 outputs = []
 reps = []
 losses = []
 
 # Train model
 for epoch in range(1, epochs + 1):
-    loss = train(epoch, loss_function)
-    losses.append(loss)
-    outputs, reps, pred_loss = pred(model, TestData)
-    print(f"Epoch[{epoch}]-loss: {loss:.4f}")
+    loss = train(epoch)
+    losses.append(loss.detach().numpy())
+    #outputs, reps, pred_loss = pred(model, TestData)
+    if epoch % 25 ==0:
+        print(f"Epoch[{epoch}]-loss: {loss:.4f}")
+
+
+# Debug by looking at loss
+plt.plot(losses)
+plt.show()
+
+# Debug by looking at the FAE, layer by layer
+
+input = x[0:5,:]
+s = model.Project(input,basis_fc)
+rep = model.activation(model.fc1(s))
+s_hat = model.activation(model.fc3(rep))
+output = model.Revert(s_hat,basis_fc)
+
+plt.plot(input[0,:].detach().numpy())
+plt.plot(output[0,:].detach().numpy())
+plt.show()
+
+#####################################
+# Principals components and representation
+#####################################
+
+#c's are estimated as weight of the fc1 function
+c1 = model.fc1.weight[0].detach() 
+pc1 =  torch.matmul(c1,basis_fc).numpy()
+
+plt.plot(pc1)
+plt.show()

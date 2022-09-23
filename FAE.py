@@ -43,12 +43,8 @@ class FAE(nn.Module):
         return xtild
 
 
-# Reconstruction + KL divergence losses summed over all elements and batch
-def loss_function(x,xtild):
-
-
-    return (x-xtilde)^2/n
-
+#Loss function
+loss_function = torch.MSELoss
 
 def ptrain(epoch):
     model.train()

@@ -17,7 +17,7 @@ from skfda import representation as representation
 import scipy
 from scipy.interpolate import BSpline
 import ignite
-import os
+#import os
 
 #################################################
 # FAE: one hidden layer
@@ -57,6 +57,23 @@ class FAE_vanilla(nn.Module):
         f = torch.matmul(x, basis_fc)
         return f
 
+class AE(nn.Module):
+    def __init__(self):
+        super(AE, self).__init__()
+        self.fc1 = nn.Linear(n_tpts, 100)
+        self.fc2 = nn.Linear(100, 50)
+        self.fc3 = nn.Linear(50, 100)
+        self.fc4 = nn.Linear(100, n_tpts)
+        self.activation = nn.ReLu()
+    def forward(self, x):
+        h1 = self.activation(self.fc1(x))
+        h2 = self.activation(self.fc2(h1))
+        h3 = self.activation(self.fc3(h2))
+        x_hat = self.fc4(h3)
+        
+        return x_hat
+
+    
 class FAE_vanilla(nn.Module):
     def __init__(self):
         super(FAE_vanilla, self).__init__()
@@ -122,38 +139,36 @@ TrainData = x[0: round(len(x) * split.rate), :]
 TestData = x[round(len(x) * split.rate):, :]
 
 # Define data loaders; DataLoader is used to load the dataset for training
-train_loader = torch.utils.data.DataLoader(TrainData, batch_size=64, shuffle=True)
+train_loader = torch.utils.data.DataLoader(TrainData, batch_size=32, shuffle=True)
 test_loader = torch.utils.data.DataLoader(TestData)
 
 #####################################
 # Define the training procedure
 #####################################
 # training function
-def train(epoch):  # do I need to include "loss_function", how about "optimizer" 
-    # It depends if you define train locally or not
+def train(epoch): 
     model.train()
-    train_loss = 0  # ?
+    train_loss = 0  
     for i, data in enumerate(train_loader):
         optimizer.zero_grad()  # The gradients are set to zero
         data = data.to(device)
         input = data.type(torch.LongTensor)
-        out,rep ,s,s_hat = model(input.float(),basis_fc)
+        out = model(input.float())
         loss = loss_function(out, input.float())
         loss.backward()  # The gradient is computed and stored.
         optimizer.step()  # .step() performs parameter update
         train_loss += loss
-    return loss
+    return train_loss
 
 # training function
-def train_s(epoch):  # do I need to include "loss_function", how about "optimizer" 
-    # It depends if you define train locally or not
+def train_s(epoch):
     model.train()
-    train_loss = 0  # ?
+    train_loss = 0  
     for i, data in enumerate(train_loader):
         optimizer.zero_grad()  # The gradients are set to zero
         data = data.to(device)
         input = data.type(torch.LongTensor)
-        out,rep ,s,s_hat = model(input.float(),basis_fc)
+        out = model(input.float())
         loss = loss_function(s, s_hat)
         loss.backward()  # The gradient is computed and stored.
         optimizer.step()  # .step() performs parameter update
@@ -162,6 +177,7 @@ def train_s(epoch):  # do I need to include "loss_function", how about "optimize
 
 
 def pred(model, data):
+    model.eval()
     input = data.type(torch.LongTensor)
     output, rep = model(input.float(),basis_fc)
     loss = loss_function(output, input.float())
@@ -171,8 +187,8 @@ def pred(model, data):
 # Model Training
 #####################################
 # Set up parameters
-n_basis = 20
-n_rep = 10
+n_basis = 100
+n_rep = 1
 # Get basis functions evaluated
 bss = representation.basis.BSpline(n_basis=n_basis, order=4)
 bss_eval = bss.evaluate(tpts, derivative=0)
@@ -183,7 +199,7 @@ model = FAE_vanilla()
 # Validation using MSE Loss function
 loss_function = nn.MSELoss()
 # Using an Adam Optimizer with lr = 0.1
-optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-8)
+optimizer = optim.Adam(model.parameters(), lr=1e-1, weight_decay=1e-8)
 # Set to CPU/GPU
 device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
@@ -213,8 +229,8 @@ rep = model.activation(model.fc1(s))
 s_hat = model.activation(model.fc3(rep))
 output = model.Revert(s_hat,basis_fc)
 
-plt.plot(input[0,:].detach().numpy())
-plt.plot(output[0,:].detach().numpy())
+plt.plot(input[1,:].detach().numpy())
+plt.plot(output[1,:].detach().numpy())
 plt.show()
 
 #####################################
@@ -226,4 +242,42 @@ c1 = model.fc1.weight[0].detach()
 pc1 =  torch.matmul(c1,basis_fc).numpy()
 
 plt.plot(pc1)
+plt.show()
+
+#####################################
+# AE Tests
+#####################################
+
+# Model Initialization
+model = AE()
+# Validation using MSE Loss function
+loss_function = nn.MSELoss()
+# Using an Adam Optimizer with lr = 0.1
+optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-8)
+# Set to CPU/GPU
+device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
+
+epochs = 2000
+outputs = []
+reps = []
+losses = []
+
+# Train model
+for epoch in range(1, epochs + 1):
+    loss = train(epoch)
+    losses.append(loss.detach().numpy())
+    #outputs, reps, pred_loss = pred(model, TestData)
+    if epoch % 25 ==0:
+        print(f"Epoch[{epoch}]-loss: {loss:.4f}")
+
+
+# Debug by looking at loss
+plt.plot(losses)
+plt.show()
+
+input = TrainData[0:5,:]
+output = model(input)
+
+plt.plot(input[1,:].detach().numpy())
+plt.plot(output[1,:].detach().numpy())
 plt.show()

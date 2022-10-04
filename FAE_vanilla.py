@@ -233,7 +233,7 @@ plt.close()
 
 # Debug by looking at the FAE, layer by layer
 
-input = x[0:5,:]
+input = x
 s = model.Project(input,basis_fc)
 rep = model.activation(model.fc1(s))
 s_hat = model.activation(model.fc3(rep))
@@ -351,16 +351,17 @@ pca.fit(s)
 
 # NN weights vs. PCs of Cov(s_m, s_n)
 s_pc1 = pca.components_.T
-plt.plot(s_pc1, label ="PC - PCA")
-plt.plot(c1, label = "PC - FAE")
+plt.plot(s_pc1, label ="PC-PCA")
+plt.plot(c1, label = "PC-FAE-encoder")
+plt.plot(c1_hat, label = "PC-FAE-decoder")
 plt.legend()
 plt.show()
-
 
 #####################################
 # Observed vs. FAE-recovered curves
 #####################################
 # Observed curves
+plt.figure(1)
 x_cen = x_np-mean(x_np,0)
 for m in range(0, len(x_cen)):
     plt.plot(tpts, x_cen[m])
@@ -369,11 +370,22 @@ plt.show()
 plt.close()
 
 # Smoothed curves
+plt.figure(4)
 basis_fd.plot()
 
+# feature-recovered curves
+plt.figure(2)
+x_rec = model.Revert(model.Project(TrainData,basis_fc),basis_fc)
+for n in range(0, len(x_np)):
+    plt.plot(tpts, x_rec[n])
+plt.title("Feature-recovered Curves")
+plt.show()
+
+
 # FAE-recovered curves
+plt.figure(3)
 x_rev = outputs.detach().numpy()
 for n in range(0, len(x_np)):
     plt.plot(tpts, x_rev[n])
 plt.title("FAE-recovered Curves")
-plt.sh
+plt.show()

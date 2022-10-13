@@ -184,12 +184,16 @@ def train(epoch, n_basis, n_rep, lamb=0):  # do I need to include "loss_function
         ## Loss for back-propagation
         # Penalty term
         penalty = 0
-        for j in range(0, n_rep):
-            penalty_rep = 0
-            for k in range(2, n_basis):
-                delta_c = model.fc1.weight[j][k]-2*model.fc1.weight[j][k-1]+model.fc1.weight[j][k-2]
-                penalty_rep += delta_c**2
-            penalty += penalty_rep
+        delta_c = model.fc1.weight[:,2:] - 2*model.fc1.weight[:,1:-1] + model.fc1.weight[:,:-2]
+        penalty = torch.sum(delta_c**2) # torch.sum(torch.sum(Delta_c**2, dim=1))
+        # for j in range(0, n_rep):
+        #     penalty_rep = 0
+        #     # delta_c = model.fc1.weight[j][2:] - 2*model.fc1.weight[j][1:-1] + model.fc1.weight[j][:-2]
+        #     # penalty_rep = torch.sum(delta_c**2)
+        #     for k in range(2, n_basis):
+        #         delta_c = model.fc1.weight[j][k]-2*model.fc1.weight[j][k-1]+model.fc1.weight[j][k-2]
+        #         penalty_rep += delta_c**2
+        #     penalty += penalty_rep
         loss = loss_function(out, input.float()) + lamb*penalty # Maybe add score_loss as well?
         # loss = loss_function(s, s_hat)
         loss.backward()  # The gradient is computed and stored.
@@ -211,7 +215,7 @@ def pred(model, data):
 #####################################
 # Set up parameters
 n_basis = 100
-n_rep = 1
+n_rep = 3
 lamb = 0.1
 basis_type = "Bspline"
 # Get basis functions evaluated

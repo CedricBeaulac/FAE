@@ -216,8 +216,9 @@ def train(epoch, n_basis, n_rep, lamb=0):  # do I need to include "loss_function
     #score_loss = 0
     for i, data in enumerate(train_loader):
         optimizer.zero_grad()  # The gradients are set to zero
-        data = data.to(device)
-        input = data.type(torch.LongTensor)
+        # data = data.to(device)
+        # input = data.type(torch.LongTensor)
+        input = data.to(device)
         out,rep,w = model(input.float(),basis_fc) # inputs should matches the inputs in forward function?
         ## Loss on the score layers (network output layer)
         #score_loss += loss_function(s, s_hat)
@@ -242,7 +243,8 @@ def train(epoch, n_basis, n_rep, lamb=0):  # do I need to include "loss_function
 
 def pred(model, data):
     model.eval()
-    input = data.type(torch.LongTensor)
+    # input = data.type(torch.LongTensor)
+    input = data.to(device)
     output, rep, s, s_hat = model(input.float(), basis_fc)
     loss = loss_function(output, input.float())
     score_loss = loss_function(s, s_hat)

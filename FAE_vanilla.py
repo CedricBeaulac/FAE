@@ -23,6 +23,7 @@ from skfda.exploratory.visualization import FPCAPlot
 import scipy
 from scipy.interpolate import BSpline
 import ignite
+#import os
 import os
 import sklearn
 from sklearn.decomposition import PCA
@@ -38,7 +39,7 @@ from sklearn.decomposition import PCA
 # Create FAE Class
 #####################################
 class FAE_vanilla(nn.Module):
-    def __init__(self, constant_weight=None):
+    def __init__(self, weight_std=None):
         super(FAE_vanilla, self).__init__()
         self.fc1 = nn.Linear(n_basis, n_rep,bias=False)
         #self.fc2 = nn.Linear(80, n_rep)
@@ -48,10 +49,10 @@ class FAE_vanilla(nn.Module):
         self.activation = nn.Identity()
 
         # initialize the weights to a specified, constant value
-        if (constant_weight is not None):
+        if (weight_std is not None):
             for m in self.modules():
                 if isinstance(m, nn.Linear):
-                    nn.init.constant_(m.weight, constant_weight)
+                    nn.init.normal_(m.weight, mean=0.0, std=weight_std)
                     #nn.init.constant_(m.bias, 0)
 
     def forward(self, x, basis_fc):
@@ -73,13 +74,30 @@ class FAE_vanilla(nn.Module):
         f = torch.matmul(x, basis_fc)
         return f
 
+class AE(nn.Module):
+    def __init__(self):
+        super(AE, self).__init__()
+        self.fc1 = nn.Linear(n_tpts, 100)
+        self.fc2 = nn.Linear(100, 50)
+        self.fc3 = nn.Linear(50, 100)
+        self.fc4 = nn.Linear(100, n_tpts)
+        self.activation = nn.ReLu()
+    def forward(self, x):
+        h1 = self.activation(self.fc1(x))
+        h2 = self.activation(self.fc2(h1))
+        h3 = self.activation(self.fc3(h2))
+        x_hat = self.fc4(h3)
+        
+        return x_hat
+
+    
 # class FAE_vanilla(nn.Module):
 #     def __init__(self):
 #         super(FAE_vanilla, self).__init__()
 #         self.encoder = nn.Sequential(
 #             nn.Linear(n_basis, 80),
 #             nn.ReLU(),
-#             #nn.Dropout(0.1),
+#             nn.Dropout(0.1),
 #             nn.Linear(80, n_rep),
 #             nn.ReLU()
 #         )
@@ -87,7 +105,7 @@ class FAE_vanilla(nn.Module):
 #         self.decoder = nn.Sequential(
 #             nn.Linear(n_rep, 80),
 #             nn.ReLU(),
-#             #nn.Dropout(0.1),
+#             nn.Dropout(0.1),
 #             nn.Linear(80, n_basis),
 #             nn.ReLU()
 #         )
@@ -97,7 +115,7 @@ class FAE_vanilla(nn.Module):
 #         rep = self.encoder(s)
 #         s_hat = self.decoder(rep)
 #         x_hat = self.Revert(s_hat, basis_fc)
-#         return x_hat, rep, s, s_hat
+#         return x_hat, rep
 #
 #     def Project(self, x, basis_fc):
 #         # basis_fc: n_time X nbasis
@@ -113,9 +131,9 @@ class FAE_vanilla(nn.Module):
 #####################################
 # Load Data sets
 #####################################
-
 # Import dataset
 os.chdir('C:/FAE')
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 # Dataset: tecator
 x_raw = pd.read_csv('Datasets/tecator/tecator.csv')
 tpts_raw = pd.read_csv('Datasets/tecator/tecator_tpts.csv')
@@ -133,6 +151,7 @@ tpts_np = np.array(tpts_raw)
 #tpts = torch.tensor(np.array(tpts_np))
 tpts_rescale = (tpts_np - min(tpts_np)) / np.ptp(tpts_np)
 tpts = torch.tensor(np.array(tpts_rescale))
+#tpts = torch.tensor(np.array(tpts_np))
 n_tpts = len(tpts)
 # tpts = np.linspace(0,1,num=10)
 
@@ -156,8 +175,9 @@ def train(epoch, n_basis, n_rep, lamb=0):  # do I need to include "loss_function
     score_loss = 0
     for i, data in enumerate(train_loader):
         optimizer.zero_grad()  # The gradients are set to zero
-        data = data.to(device)
-        input = data.type(torch.LongTensor)
+        # data = data.to(device)
+        # input = data.type(torch.LongTensor)
+        input = data.to(device)
         out,rep,s,s_hat = model(input.float(), basis_fc) # inputs should matches the inputs in forward function?
         ## Loss on the score layers (network output layer)
         score_loss += loss_function(s, s_hat)
@@ -177,9 +197,10 @@ def train(epoch, n_basis, n_rep, lamb=0):  # do I need to include "loss_function
         train_loss += loss
     return train_loss, score_loss # we need train_loss, instead of loss, for plotting
 
-
 def pred(model, data):
-    input = data.type(torch.LongTensor)
+    model.eval()
+    # input = data.type(torch.LongTensor)
+    input = data.to(device)
     output, rep, s, s_hat = model(input.float(), basis_fc)
     loss = loss_function(output, input.float())
     score_loss = loss_function(s, s_hat)
@@ -189,16 +210,21 @@ def pred(model, data):
 # Model Training
 #####################################
 # Set up parameters
-n_basis = 80
+n_basis = 100
 n_rep = 1
-lamb = 0.2
+lamb = 0.1
+basis_type = "Bspline"
 # Get basis functions evaluated
-bss = representation.basis.BSpline(n_basis=n_basis, order=4)
+if basis_type == "Bspline":
+    bss = representation.basis.BSpline(n_basis=n_basis, order=4)
+elif basis_type == "Fourier":
+    bss = representation.basis.Fourier([min(tpts.numpy().flatten()), max(tpts.numpy().flatten())], n_basis=n_basis)
+
 bss_eval = bss.evaluate(tpts, derivative=0)
 basis_fc = torch.from_numpy(bss_eval[:, :, 0]).float()
 
 # Model Initialization
-model = FAE_vanilla(constant_weight=1)
+model = FAE_vanilla(weight_std=2)
 # Validation using MSE Loss function
 loss_function = nn.MSELoss()
 # Using an Adam Optimizer with lr = 0.1
@@ -208,7 +234,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-8)
 # Set to CPU/GPU
 device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
-epochs = 200
+epochs = 1000
 outputs = []
 reps = []
 losses = []
@@ -221,7 +247,7 @@ for epoch in range(1, epochs + 1):
     score_losses.append(score_loss.detach().numpy())
     outputs, reps, pred_loss, pred_score_loss = pred(model, TrainData)
     if epoch % 25 ==0:
-        print(f"Epoch[{epoch}]-loss: {loss:.4f}")
+        print(f"Epoch[{epoch}]-loss: {loss:.4f}; feature loss: {score_loss: 4f}")
 
 
 # Debug by looking at loss
@@ -232,34 +258,30 @@ plt.legend()
 plt.close()
 
 # Debug by looking at the FAE, layer by layer
-
-input = x
+input = TrainData
 s = model.Project(input,basis_fc)
 rep = model.activation(model.fc1(s))
 s_hat = model.activation(model.fc3(rep))
 output = model.Revert(s_hat,basis_fc)
 
+# Plot of Input Curves (Observed Curves)
 input_plt = input.detach().numpy()
-plt.figure(1)
-for m in range(0, len(input_plt)):
-    plt.plot(tpts, input_plt[m])
-plt.title("Input Curves")
-plt.show()
-plt.close()
+# plt.figure(1)
+# for m in range(0, len(input_plt)):
+#     plt.plot(tpts, input_plt[m])
+# plt.title("Input Curves")
+# plt.show()
+# plt.close()
 
+# Plot of Output Curves (Predicted Curves)
 output_plt = output.detach().numpy()
-plt.figure(2)
-for m in range(0, len(output_plt)):
-    plt.plot(tpts, output_plt[m])
-plt.title("Output Curves")
-plt.show()
+# plt.figure(2)
+# for m in range(0, len(output_plt)):
+#     plt.plot(tpts, output_plt[m])
+# plt.title("Output Curves")
+# plt.show()
 
-plt.plot(input[0,:].detach().numpy(), label = "Input")
-#plt.plot(tpts, output[0,:].detach().numpy(), label = "Output")
-#plt.legend()
-plt.show()
-plt.close()
-
+# Plot of Input & Output Curves
 plt.figure(3, figsize=(10, 20))
 plt.subplot(211)
 for m in range(0, len(input_plt)):
@@ -274,41 +296,34 @@ plt.show()
 #####################################
 # Principals components and representation
 #####################################
-
-#c's are estimated as weight of the fc1 function
+## c's are estimated as weight of the fc1 function
 c1 = model.fc1.weight[0].detach()
-c2 = model.fc1.weight[1].detach()
-#c1 = model.encoder[0].weight.detach()
+# c2 = model.fc1.weight[1].detach()
+# c1 = model.encoder[0].weight.detach()
 pc1 = torch.matmul(c1,basis_fc).numpy()
-pc2 = torch.matmul(c2,basis_fc).numpy()
+# pc2 = torch.matmul(c2,basis_fc).numpy()
 
-plt.plot(tpts, pc1, label='FPC1-FAE')
-#plt.plot(tpts, pc2, label='FPC2-FAE')
-plt.xlabel('time grid')
-plt.legend()
-plt.show()
-plt.close()
-
-#c's are estimated as weight of the fc3 function
+## c's are estimated as weight of the fc3 function
 c1_hat = model.fc3.weight[:,0].detach()
-c2_hat = model.fc3.weight[:,1].detach()
-#c1 = model.encoder[0].weight.detach()
+# c2_hat = model.fc3.weight[:,1].detach()
+# c1 = model.encoder[0].weight.detach()
 pc1_hat = torch.matmul(c1_hat,basis_fc).numpy()
-pc2_hat = torch.matmul(c2_hat,basis_fc).numpy()
+# pc2_hat = torch.matmul(c2_hat,basis_fc).numpy()
 
-plt.plot(tpts, pc1_hat, label="FPC1'-FAE")
-#plt.plot(tpts, pc2_hat, label="FPC2'-FAE")
+plt.plot(tpts, pc1, label='FPC1-FAE-encoder')
+# plt.plot(tpts, pc2, label='FPC2-FAE-encoder')
+plt.plot(tpts, pc1_hat, label="FPC1-FAE-decoder")
+# plt.plot(tpts, pc2_hat, label="FPC2-FAE-decoder")
 plt.xlabel('time grid')
 plt.legend()
 plt.show()
-plt.close()
+# plt.close()
 
 # Representatives, = FPC scores
 reps_bss = reps.detach().numpy()
 # reps_gt2 = reps_fpc[reps_fpc > 2]
 # np.where(reps_fpc > 2)[0]
 # [i for i, x in enumerate(reps_fpc > 2) if x]
-
 
 #####################################
 # Perform FPCA
@@ -322,38 +337,80 @@ fpca_basis = fda.preprocessing.dim_reduction.feature_extraction.FPCA(n_component
 fpca_basis = fpca_basis.fit(basis_fd)
 fpca_basis.components_.plot()
 
-
 # Get FPC scores
 fpc_scores = fpca_basis.transform(basis_fd)
 # Get mean function
 fpca_basis.mean_.plot()
 #fpca_basis.singular_values_
 
-plt.figure(2)
 fpca_basis.components_[0].plot(label = 'FPC1-FPCA')
-plt.plot(tpts, pc1, label = "FPC1-FAE")
+#plt.plot(tpts, pc1, label='FPC1-FAE-encoder')
+plt.plot(tpts, pc1_hat, label="FPC1-FAE-decoder")
+plt.xlabel('time grid')
 plt.title(f"Basis#={n_basis}, FPC#={n_rep}, lamb={lamb}")
 plt.legend()
 plt.show()
 plt.close()
 
-fpca_basis.components_[1].plot(label = 'FPC2-FPCA')
-plt.plot(tpts, pc2, label = "FPC2-FAE")
-plt.title(f"Basis#={n_basis}, FPC#={n_rep}")
-plt.legend()
+# fpca_basis.components_[1].plot(label = 'FPC2-FPCA')
+# plt.plot(tpts, pc2, label = "FPC2-FAE")
+# plt.title(f"Basis#={n_basis}, FPC#={n_rep}")
+# plt.legend()
+# plt.show()
+# plt.close()
+
+
+#####################################
+# AE Tests
+#####################################
+
+# Model Initialization
+model = AE()
+# Validation using MSE Loss function
+loss_function = nn.MSELoss()
+# Using an Adam Optimizer with lr = 0.1
+optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-8)
+# Set to CPU/GPU
+device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
+
+epochs = 2000
+outputs = []
+reps = []
+losses = []
+
+# Train model
+for epoch in range(1, epochs + 1):
+    loss = train(epoch)
+    losses.append(loss.detach().numpy())
+    #outputs, reps, pred_loss = pred(model, TestData)
+    if epoch % 25 ==0:
+        print(f"Epoch[{epoch}]-loss: {loss:.4f}")
+
+# Debug by looking at loss
+plt.plot(losses)
+plt.show()
+
+input = TrainData[0:5,:]
+output = model(input)
+
+plt.plot(input[1,:].detach().numpy())
+plt.plot(output[1,:].detach().numpy())
 plt.show()
 plt.close()
 
-# PCA on scores s_m
-s = model.Project(TrainData,basis_fc).detach().numpy()
+#####################################
+# Perform PCA on features s_m
+#####################################
+s_np = s.detach().numpy()
 pca = PCA(n_components=1)
-pca.fit(s)
+pca.fit(s_np)
 
 # NN weights vs. PCs of Cov(s_m, s_n)
 s_pc1 = pca.components_.T
 plt.plot(s_pc1, label ="PC-PCA")
-plt.plot(c1, label = "PC-FAE-encoder")
-plt.plot(c1_hat, label = "PC-FAE-decoder")
+plt.plot(c1, label = "PC(NN weights)-FAE-encoder")
+plt.plot(c1_hat, label = "PC(NN weights)-FAE-decoder")
+plt.xlabel('basis #')
 plt.legend()
 plt.show()
 
@@ -370,21 +427,46 @@ plt.show()
 plt.close()
 
 # Smoothed curves
-plt.figure(4)
 basis_fd.plot()
+plt.title("Smoothed Curves")
 
-# feature-recovered curves
-plt.figure(2)
-x_rec = model.Revert(model.Project(TrainData,basis_fc),basis_fc)
+# Feature-recovered curves
+plt.figure(3)
+# x_rec = model.Revert(model.Project(TrainData,basis_fc),basis_fc)
+x_rec = model.Revert(s, basis_fc)
 for n in range(0, len(x_np)):
     plt.plot(tpts, x_rec[n])
 plt.title("Feature-recovered Curves")
 plt.show()
 
-
 # FAE-recovered curves
-plt.figure(3)
+plt.figure(4)
 x_rev = outputs.detach().numpy()
+for n in range(0, len(x_np)):
+    plt.plot(tpts, x_rev[n])
+plt.title("FAE-recovered Curves")
+
+plt.figure(5, figsize=(20, 20))
+plt.subplot(221)
+# Observed curves
+x_cen = x_np-mean(x_np,0)
+for m in range(0, len(x_cen)):
+    plt.plot(tpts, x_cen[m])
+plt.title("Observed Curves")
+# plt.subplot(222)
+# # Smoothed curves
+# basis_fd.plot()
+# plt.title("Smoothed Curves")
+plt.subplot(223)
+# feature-recovered curves
+# x_rec = model.Revert(model.Project(TrainData,basis_fc),basis_fc)
+x_rec = model.Revert(s,basis_fc)
+for n in range(0, len(x_np)):
+    plt.plot(tpts, x_rec[n])
+plt.title("Feature-recovered Curves")
+plt.subplot(224)
+# FAE-recovered curves
+x_rev = output.detach().numpy()
 for n in range(0, len(x_np)):
     plt.plot(tpts, x_rev[n])
 plt.title("FAE-recovered Curves")

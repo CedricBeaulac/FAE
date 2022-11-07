@@ -488,4 +488,4 @@ x_rev = outputs.detach().numpy()
 for n in range(0, len(x_np)):
     plt.plot(tpts, x_rev[n])
 plt.title("FAE-recovered Curves")
-plt.sh
+plt.show()

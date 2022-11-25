@@ -42,26 +42,24 @@ import random
 class FAE_vanilla(nn.Module):
     def __init__(self, weight_std=None):
         super(FAE_vanilla, self).__init__()
-        self.fc1 = nn.Linear(n_basis, 20,bias=False)
-        self.fc2 = nn.Linear(20, n_rep, bias=False)
+        self.fc1 = nn.Linear(n_basis, 40,bias=False)
+        self.fc2 = nn.Linear(40, n_rep, bias=False)
         # self.fc1 = nn.Linear(n_basis, n_rep, bias=False)
-        self.fc3 = nn.Linear(n_rep, 20, bias=False)
+        self.fc3 = nn.Linear(n_rep, 40, bias=False)
         # self.fc3 = nn.Linear(n_rep, n_basis, bias=False)
-        self.fc4 = nn.Linear(20, n_basis, bias=False)
-        self.activation = nn.Tanh()
-
+        self.fc4 = nn.Linear(40, n_basis, bias=False)
+        self.activation = nn.ReLU()
         # initialize the weights to a specified, constant value
         if (weight_std is not None):
             for m in self.modules():
                 if isinstance(m, nn.Linear):
                     nn.init.normal_(m.weight, mean=0.0, std=weight_std)
                     #nn.init.constant_(m.bias, 0)
-
     def forward(self, x, basis_fc):
         s = self.Project(x, basis_fc)
         # rep = self.activation(self.fc1(s))
         t1 = self.activation(self.fc1(s))
-        rep = self.activation(self.fc2(t1))
+        rep = self.fc2(t1)
         t2 = self.activation(self.fc3(rep))
         s_hat = self.fc4(t2)
         # s_hat = self.fc3(rep)
@@ -198,11 +196,16 @@ os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 x_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST.csv')
 tpts_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST_tpts.csv')
 
+
+nc=200
+tpts = np.linspace(0,1,21)
+x_raw = DataGenerator(nc, tpts,4,2)
+
+tpts_raw = tpts
 # Prepare numpy/tensor data
 x_np = np.array(x_raw).astype(float)
 x = torch.tensor(x_np).float()
 x = x - torch.mean(x,0)
-
 # Rescale timestamp to [0,1]
 tpts_np = np.array(tpts_raw)
 #tpts = torch.tensor(np.array(tpts_np))
@@ -215,7 +218,7 @@ n_tpts = len(tpts)
 # Split training/test set
 split.rate = 0.8
 # TrainData, TestData = torch.utils.data.random_split(x, [round(len(x) * split.rate), (len(x)-round(len(x) * split.rate))])
-train_no = random.sample(range(0, len(x)), round(len(x) * split.rate))
+train_no = random.sample(list(range(0, len(x))), round(len(x) * split.rate))
 TrainData = x[train_no]
 if split.rate == 1:
     TestData=x
@@ -246,7 +249,7 @@ bss_eval = bss.evaluate(tpts, derivative=0)
 basis_fc = torch.from_numpy(bss_eval[:, :, 0]).float()
 
 # Model Initialization
-model = FAE_vanilla(weight_std=2)
+model = FAE_vanilla(weight_std=1)
 # Validation using MSE Loss function
 loss_function = nn.MSELoss()
 # Using an Adam Optimizer with lr = 0.1
@@ -256,7 +259,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-6)
 # Set to CPU/GPU
 device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
-epochs = 5000
+epochs = 15000
 outputs = []
 reps = []
 losses = []
@@ -293,12 +296,10 @@ FAE_pred_plt = FAE_pred.detach().numpy()
 plt.figure(3, figsize=(10, 20))
 plt.subplot(211)
 for m in range(0, len(input_plt)):
-# for m in id_plt:
     plt.plot(tpts, input_plt[m])
 plt.title("Input Curves")
 plt.subplot(212)
 for m in range(0, len(FAE_pred_plt)):
-# for m in id_plt:
     plt.plot(tpts, FAE_pred_plt[m])
 plt.title("Output Curves")
 plt.show()
@@ -340,6 +341,7 @@ fpca_basis.components_.plot()
 
 fpca_basis.explained_variance_
 # Get FPC scores
+fpc_scores_train = fpca_basis.transform(basis_fd_train)
 fpc_scores_test = fpca_basis.transform(basis_fd_test)
 FPCA_pred = fpca_basis.inverse_transform(fpc_scores_test)._evaluate(tpts_fd)[:,:,0]
 
@@ -389,8 +391,15 @@ def eval_MSE(obs_X, pred_X):
     loss = loss_fct(obs_X, pred_X)
     return loss
 
-eval_MSE(input, FAE_pred)
-eval_MSE(input, FPCA_pred)
+# On test data set
+eval_MSE(TestData, FAE_pred)
+eval_MSE(TestData, FPCA_pred)
+
+# On train data
+FAE_pred_train, reps, pred_loss, pred_score_loss = pred(model, TrainData)
+FPCA_pred_train = fpca_basis.inverse_transform(fpc_scores_train)._evaluate(tpts_fd)[:,:,0]
+eval_MSE(TrainData, FAE_pred_train)
+eval_MSE(TrainData, FPCA_pred_train)
 
 eval_tpts_FAE = []
 eval_tpts_FPCA = []

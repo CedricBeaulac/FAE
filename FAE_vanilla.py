@@ -199,7 +199,10 @@ tpts_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST_tpts.csv')
 
 nc=200
 tpts = np.linspace(0,1,21)
-x_raw = DataGenerator(nc, tpts,4,2)
+x_raw,curves = SmoothDataGenerator(nc, tpts,8,0.4)
+
+plt.plot(curves)
+plt.show()
 
 tpts_raw = tpts
 # Prepare numpy/tensor data
@@ -236,7 +239,7 @@ test_loader = torch.utils.data.DataLoader(TestData)
 # Set up parameters
 n_basis = 50
 n_rep = 5
-lamb = 0
+lamb = 0.001
 pen = "feature"
 basis_type = "Bspline"
 # Get basis functions evaluated
@@ -259,7 +262,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-2, weight_decay=1e-6)
 # Set to CPU/GPU
 device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
-epochs = 15000
+epochs = 5000
 outputs = []
 reps = []
 losses = []
@@ -362,12 +365,10 @@ plt.close()
 plt.figure(4, figsize=(10, 20))
 plt.subplot(211)
 for m in range(0, len(input_plt)):
-# for m in id_plt:
     plt.plot(tpts, input_plt[m])
 plt.title("Input Curves")
 plt.subplot(212)
 for m in range(0, len(FPCA_pred)):
-# for m in id_plt:
     plt.plot(tpts, FPCA_pred[m])
 plt.title("Output Curves")
 plt.show()

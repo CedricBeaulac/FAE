@@ -29,25 +29,35 @@ import os
 # Create FAE Class
 #####################################
 class FeedForward(nn.Module):
-    def __init__(self, n_input=5, hidden=[10], n_rep=2, dropout=0.1, activation=F.relu):
+    def __init__(self, n_input=5, hidden=[10], n_rep=2, dropout=0, activation=nn.ReLU(), decoder=False):
         super().__init__()
         self.activation = activation
-        dim = [n_input]+hidden+[n_rep]
-        self.layers = nn.ModuleList([nn.Linear(dim[i-1], dim[i]) for i in range(1, len(dim))])
+        self.dim = [n_input]+hidden+[n_rep]
+        self.layers = nn.ModuleList([nn.Linear(self.dim[i-1], self.dim[i]) for i in range(1, len(self.dim))])
         self.dropout = nn.ModuleList([nn.Dropout(dropout) for _ in range(len(hidden))])
+        self.decoder = decoder
 
     def forward(self, x):
-        for i in range(len(dim)-1):
-            x = self.layers[i](x)
+        if self.decoder == True:
+            for i in range(len(self.dim)-2):
+                x = self.layers[i](x)
+                x = self.activation(x)
+                if i < (len(self.layers)-2):
+                    x = self.dropout[i](x)
+            x = self.layers[len(self.dim)-1](x)
             x = self.activation(x)
-            if i < (len(self.layers)-1):
-                x = self.dropout[i](x)
+        else:
+            for i in range(len(self.dim)-1):
+                x = self.layers[i](x)
+                x = self.activation(x)
+                if i < (len(self.layers)-1):
+                    x = self.dropout[i](x)
         return x
 
 class FAE(nn.Module):
     def __init__(self, n_basis=5, basis_type = "BSpline", enc_hidden=[100, 100, 50], n_rep=2,
                  time_grid=None, time_rescale=True,
-                 activation=F.relu, dropout=0.1, device=None):
+                 activation=F.relu, dropout=0, device=None):
         """
         n_basis: no. of basis functions selected, an integer
         enc_hidden: hidden layers used in the encoder, array of integers
@@ -66,9 +76,9 @@ class FAE(nn.Module):
         dnc_hidden = list(reversed(enc_hidden))
 
         self.encoder = FeedForward(n_input=n_basis, hidden=enc_hidden, n_rep=n_rep,
-                                   dropout=dropout, activation=activation)
-        self.decoder = FeedForward(n_input=n_rep, hidden=enc_hidden, n_rep=n_basis,
-                                   dropout=dropout, activation=activation)
+                                   dropout=dropout, activation=activation, decoder=False)
+        self.decoder = FeedForward(n_input=n_rep, hidden=dnc_hidden, n_rep=n_basis,
+                                   dropout=dropout, activation=activation, decoder=True)
 
     def forward(self, x):
         # Rescale time grid
@@ -148,8 +158,7 @@ def train(epoch, loss_function):  # do I need to include "loss_function", how ab
     FAE_model.train()
     train_loss = 0  # ?
     for i, data in enumerate(train_loader):
-        data = data.to(device)
-        input = data.type(torch.LongTensor)
+        input = data.to(device)
         output, rep = FAE_model(input.float())
         loss = loss_function(output, input.float())
 
@@ -160,7 +169,7 @@ def train(epoch, loss_function):  # do I need to include "loss_function", how ab
 
 
 def pred(model, data):
-    input = data.type(torch.LongTensor)
+    input = data.to(device)
     output, rep = FAE_model(input.float())
     loss = loss_function(output, input.float())
     return output, rep, loss

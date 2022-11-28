@@ -78,7 +78,9 @@ class weight_func(nn.Module):
     def Project(self, x, weight_basis_fc):
         # basis_fc: n_time X nbasis
         # x: n_subject X n_time
-        s = torch.matmul(x, torch.t(weight_basis_fc))
+        w = x.size(1) - 1
+        W = torch.tensor([1/(2*w)] + [1/w]*(w-1) + [1/(2*w)])
+        s = torch.matmul(torch.mul(x, W), torch.t(weight_basis_fc))
         return s
 
 class FAE_multi(nn.Module):
@@ -193,6 +195,7 @@ def FAE_multi_pred(model, data):
 #####################################
 # Import dataset
 os.chdir('C:/FAE')
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 # Dataset: tecator
 # x_raw = pd.read_csv('Datasets/tecator/tecator.csv')
 # tpts_raw = pd.read_csv('Datasets/tecator/tecator_tpts.csv')

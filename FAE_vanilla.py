@@ -25,6 +25,7 @@ from scipy.interpolate import BSpline
 import ignite
 #import os
 import os
+import sys
 import sklearn
 from sklearn.decomposition import PCA
 import random
@@ -186,6 +187,9 @@ def pred(model, data):
 # Import dataset
 os.chdir('C:/FAE')
 os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
+# sys.path.append(os.getcwd())
+import DataGenerator
+from DataGenerator import *
 # Dataset: tecator
 # x_raw = pd.read_csv('Datasets/tecator/tecator.csv')
 # tpts_raw = pd.read_csv('Datasets/tecator/tecator_tpts.csv')
@@ -196,13 +200,19 @@ os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 x_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST.csv')
 tpts_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST_tpts.csv')
 
+# nc=200
+# tpts = np.linspace(0,1,21)
+# x_raw,curves = SmoothDataGenerator(nc, tpts,8,0.4)
 
-nc=200
+nc=500
+classes = 10
 tpts = np.linspace(0,1,21)
-x_raw,curves = SmoothDataGenerator(nc, tpts,8,0.4)
+x_raw,curves, coef_raw = SmoothDataGenerator(nc, tpts, classes,0.5)
 
 plt.plot(curves)
 plt.show()
+plt.plot(transpose(x_raw))
+plt.show
 
 tpts_raw = tpts
 # Prepare numpy/tensor data
@@ -221,7 +231,16 @@ n_tpts = len(tpts)
 # Split training/test set
 split.rate = 0.8
 # TrainData, TestData = torch.utils.data.random_split(x, [round(len(x) * split.rate), (len(x)-round(len(x) * split.rate))])
-train_no = random.sample(list(range(0, len(x))), round(len(x) * split.rate))
+# train_no = random.sample(list(range(0, len(x))), round(len(x) * split.rate))
+train_no = []
+seed(142)
+train_seeds = random.sample(range(1000), classes)
+for i in range(0, classes):
+    step = len(x)/classes
+    seed(train_seeds[i])
+    temp_no = random.sample(range(int(step*i), int(step*(i+1))), round(step*split.rate))
+    train_no.extend(temp_no)
+
 TrainData = x[train_no]
 if split.rate == 1:
     TestData=x
@@ -322,7 +341,7 @@ plt.show()
 #####################################
 # Perform FPCA
 #####################################
-n_basis_fpca = 10
+n_basis_fpca = 15
 if basis_type == "Bspline":
     bss_fpca = representation.basis.BSpline(n_basis=n_basis_fpca, order=4)
 elif basis_type == "Fourier":

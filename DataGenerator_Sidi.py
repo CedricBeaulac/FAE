@@ -121,11 +121,11 @@ class NN_generator(nn.Module):
 device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
 # Set up parameters
-n_basis = 20
+n_basis = 10
 basis_type = "BSpline"
 decoder_hidden = [10]
 n_rep = n_feature
-time_grid = np.arange(0,1+1/19,1/49)
+time_grid = np.arange(1, 50 ,1/49)
 time_rescale = True
 activation_function = nn.Sigmoid()
 dropout=0

@@ -40,12 +40,18 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.cluster import KMeans
 import random
 from random import seed
+from scipy import stats
+import statistics
+from statistics import stdev
 
 os.chdir('C:/FAE')
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 if not os.getcwd() in sys.path:
     sys.path.append(os.getcwd())
 import DataGenerator
 from DataGenerator import *
+import DataGenerator_NN
+from DataGenerator_NN import *
 import Functions
 from Functions import *
 
@@ -68,7 +74,7 @@ class FAE_vanilla(nn.Module):
         self.fc3 = nn.Linear(n_rep, 10, bias=False)
         # self.fc3 = nn.Linear(n_rep, n_basis, bias=False)
         self.fc4 = nn.Linear(10, n_basis, bias=False)
-        self.activation = nn.Softplus()
+        self.activation = nn.Sigmoid()
 
         # initialize the weights to a specified, constant value
         if (weight_std is not None):
@@ -78,25 +84,25 @@ class FAE_vanilla(nn.Module):
                     #nn.init.constant_(m.bias, 0)
 
     def forward(self, x, basis_fc):
-        s = self.Project(x, basis_fc)
-        # rep = self.activation(self.fc1(s))
-        t1 = self.activation(self.fc1(s))
+        feature = self.Project(x, basis_fc)
+        # rep = self.activation(self.fc1(feature))
+        t1 = self.activation(self.fc1(feature))
         rep = self.fc2(t1)
         t2 = self.activation(self.fc3(rep))
-        s_hat = self.fc4(t2)
-        # s_hat = self.fc3(rep)
-        x_hat = self.Revert(s_hat, basis_fc)
-        return x_hat, rep, s, s_hat
+        coef = self.fc4(t2)
+        # coef = self.fc3(rep)
+        x_hat = self.Revert(coef, basis_fc)
+        return x_hat, rep, feature, coef
     def Project(self, x, basis_fc):
         # basis_fc: n_time X nbasis
         # x: n_subject X n_time
         w = x.size(1)-1
         W = torch.tensor([1/(2*w)]+[1/w]*(w-1)+[1/(2*w)])
-        s = torch.matmul(torch.mul(x, W), torch.t(basis_fc))
-        return s
-    def Revert(self, x, basis_fc):
-        f = torch.matmul(x, basis_fc)
+        f = torch.matmul(torch.mul(x, W), torch.t(basis_fc))
         return f
+    def Revert(self, x, basis_fc):
+        g = torch.matmul(x, basis_fc)
+        return g
 
 #####################################
 # Define the training procedure
@@ -112,20 +118,20 @@ def train(train_loader, pen=None, lamb=0):  # do I need to include "loss_functio
         # data = data.to(device)
         # input = data.type(torch.LongTensor)
         input = data.to(device)
-        out,rep,s,s_hat = model(input.float(), basis_fc) # inputs should matches the inputs in forward function?
+        out,rep,feature,coef = model(input.float(), basis_fc) # inputs should matches the inputs in forward function?
         ## Loss on the score layers (network output layer)
-        score_loss += loss_function(s, s_hat)
+        score_loss += loss_function(feature, coef) # meaningful when basis functions are orthonormal
         ## Loss for back-propagation
         # Penalty term
         penalty = 0
-        if pen == "encoder":
-            delta_c = model.fc1.weight[:,2:] - 2*model.fc1.weight[:,1:-1] + model.fc1.weight[:,:-2]
-            penalty = torch.sum(delta_c**2) # torch.sum(torch.sum(delta_c**2, dim=1))
-        if pen == "decoder" :
-            delta_c = model.fc3.weight[:,2:] - 2*model.fc3.weight[:,1:-1] + model.fc3.weight[:,:-2]
-            penalty = torch.sum(delta_c**2) # torch.sum(torch.sum(delta_c**2, dim=1))
-        if pen == "feature":
-            delta_c = s_hat[:,2:] - 2*s_hat[:,1:-1] + s_hat[:,:-2]
+        # if pen == "encoder":
+        #     delta_c = model.fc1.weight[:,2:] - 2*model.fc1.weight[:,1:-1] + model.fc1.weight[:,:-2]
+        #     penalty = torch.sum(delta_c**2) # torch.sum(torch.sum(delta_c**2, dim=1))
+        # if pen == "decoder" :
+        #     delta_c = model.fc3.weight[:,2:] - 2*model.fc3.weight[:,1:-1] + model.fc3.weight[:,:-2]
+        #     penalty = torch.sum(delta_c**2) # torch.sum(torch.sum(delta_c**2, dim=1))
+        if pen == "diff":
+            delta_c = coef[:,2:] - 2*coef[:,1:-1] + coef[:,:-2]
             penalty = torch.mean(torch.sum(delta_c**2, dim=1))
         # for j in range(0, n_rep):
         #     penalty_rep = 0
@@ -146,23 +152,15 @@ def pred(model, data):
     model.eval()
     # input = data.type(torch.LongTensor)
     input = data.to(device)
-    output, rep, s, s_hat = model(input.float(), basis_fc)
+    output, rep, feature, coef = model(input.float(), basis_fc)
     loss = loss_function(output, input.float())
-    score_loss = loss_function(s, s_hat)
+    score_loss = loss_function(feature, coef)
     return output, rep, loss, score_loss
 
 #####################################
 # Load Data sets
 #####################################
 # Import dataset
-os.chdir('C:/FAE')
-os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
-if not os.getcwd() in sys.path:
-    sys.path.append(os.getcwd())
-import DataGenerator
-from DataGenerator import *
-import Functions
-from Functions import *
 # Dataset: tecator
 # x_raw = pd.read_csv('Datasets/tecator/tecator.csv')
 # tpts_raw = pd.read_csv('Datasets/tecator/tecator_tpts.csv')
@@ -173,6 +171,11 @@ from Functions import *
 x_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST.csv')
 tpts_raw = pd.read_csv('Datasets/ElNino/ElNino_ERSST_tpts.csv')
 label_table = pd.read_csv('Datasets/ElNino/ElNino_ERSST_label.csv')
+label = label_table.x.to_numpy()
+# Dataset: phoneme
+x_raw = pd.read_csv('Datasets/phoneme/phoneme.csv')
+tpts_raw = pd.read_csv('Datasets/phoneme/phoneme_tpts.csv')
+label_table = pd.read_csv('Datasets/phoneme/phoneme_label.csv')
 label = label_table.x.to_numpy()
 
 # Simulated Data
@@ -201,15 +204,18 @@ n_tpts = len(tpts)
 #####################################
 # Perform FAE (Model Training)
 #####################################
-niter = 20
-seed(1432)
-niter_seed = random.sample(range(5000), niter)
+# niter = 20
+# seed(1432)
+# niter_seed = random.sample(range(5000), niter)
+niter = 10
+seed(743)
+niter_seed = random.sample(range(1000), niter)
 
 # Set up parameters
-n_basis = 20
+n_basis = 15
 n_rep = 5
-lamb = 0.00
-pen = "feature"
+lamb = 0
+pen = "diff"
 basis_type = "Bspline"
 # Get basis functions evaluated
 if basis_type == "Bspline":
@@ -237,13 +243,17 @@ clustering_FAE_acc_niter = []
 clustering_FAE_acc_mean_niter = []
 clustering_FAE_acc_sd_niter = []
 
+# Set up NN hyperparameters:
+epochs = 2000
+batch_size = 32
+
 # Start iterations
 for i in range(niter):
     # Split training/test set
     TrainData, TestData, TrainLabel, TestLabel, train_no = train_test_split(x, label, split_rate =0.8, seed_no=niter_seed[i])
     FAE_train_no_niter.append(train_no)
     # Define data loaders; DataLoader is used to load the dataset for training
-    train_loader = torch.utils.data.DataLoader(TrainData, batch_size=32, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(TrainData, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(TestData)
 
     # Model Initialization
@@ -255,7 +265,7 @@ for i in range(niter):
     # Set to CPU/GPU
     device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
-    epochs = 10000
+    epochs = epochs
     # losses = []
     # score_losses = []
 
@@ -266,7 +276,7 @@ for i in range(niter):
         # score_losses.append(score_loss.detach().numpy())
         #if epoch == epochs:
         FAE_pred_test, FAE_reps_test, FAE_pred_loss_test, FAE_pred_score_loss_test = pred(model, TestData)
-        if epoch % 1000 == 0:
+        if epoch % 100 == 0:
             print(f"Epoch[{epoch}]-loss: {loss:.4f}; feature loss: {score_loss: 4f}; pred_loss:{FAE_pred_loss_test:4f}")
 
     # Debug by looking at loss
@@ -322,6 +332,21 @@ for i in range(niter):
     clustering_FAE_acc_mean_niter.append(mean(acc_list_FAE))
     clustering_FAE_acc_sd_niter.append(std(acc_list_FAE))
 
+# Print for result tables
+print("--- FAE-Nonlinear Results --- \n"
+      f"Train Pred Acc Mean: {mean(FAE_pred_train_acc_mean_niter):.4f}; "
+      f"Train Pred Acc SD: {std(FAE_pred_train_acc_mean_niter):.4f}; \n"
+      f"Test Pred Acc Mean: {mean(FAE_pred_test_acc_mean_niter):.4f}; "
+      f"Test Pred Acc SD: {std(FAE_pred_test_acc_mean_niter):.4f}; \n"
+      f"Train Classification Acc Mean: {mean(classification_FAE_train_niter):.4f}; "
+      f"Train Classification Acc SD: {std(classification_FAE_train_niter):.4f}; \n"
+      f"Test Classification Acc Mean: {mean(classification_FAE_test_niter):.4f}; "
+      f"Test Classification Acc SD: {std(classification_FAE_test_niter):.4f}; \n"
+      f"Clustering Acc Mean (by clusters): {np.around(mean(clustering_FAE_acc_niter, axis=0), 4)};\n" 
+      #[round(i, 4) for i in mean(clustering_FAE_acc_niter, axis=0)] or [f"{num:.4f}" for num in mean(clustering_FAE_acc_niter, axis=0)]
+      f"Overall Clustering Acc Mean: {mean(clustering_FAE_acc_mean_niter):.4f};")
+
+stats.ttest_rel(classification_FAE_test_niter, classification_FPCA_test_niter)
 
 # If activation function is nn.Identity()
 FAE_identity_train_no_niter = FAE_train_no_niter.copy()
@@ -340,9 +365,23 @@ clustering_FAE_identity_acc_niter = clustering_FAE_acc_niter.copy()
 clustering_FAE_identity_acc_mean_niter = clustering_FAE_acc_mean_niter.copy()
 clustering_FAE_identity_acc_sd_niter = clustering_FAE_acc_sd_niter.copy()
 
+# Print for result tables
+print("--- FAE-Indentity Results --- \n"
+      f"Train Pred Acc Mean: {mean(FAE_identity_pred_train_acc_mean_niter):.4f}; "
+      f"Train Pred Acc SD: {std(FAE_identity_pred_train_acc_mean_niter):.4f}; \n"
+      f"Test Pred Acc Mean: {mean(FAE_identity_pred_test_acc_mean_niter):.4f}; "
+      f"Test Pred Acc SD: {std(FAE_identity_pred_test_acc_mean_niter):.4f}; \n"
+      f"Train Classification Acc Mean: {mean(classification_FAE_identity_train_niter):.4f}; "
+      f"Train Classification Acc SD: {std(classification_FAE_identity_train_niter):.4f}; \n"
+      f"Test Classification Acc Mean: {mean(classification_FAE_identity_test_niter):.4f}; "
+      f"Test Classification Acc SD: {std(classification_FAE_identity_test_niter):.4f}; \n"
+      f"Clustering Acc Mean (by clusters): {np.around(mean(clustering_FAE_identity_acc_niter, axis=0), 4)};\n" 
+      f"Overall Clustering Acc Mean: {mean(clustering_FAE_identity_acc_mean_niter):.4f};")
+
+
 # Plot of Input (Observed Curves) & Output Curves (Predicted Curves)
 i=1
-TestData = x[[i for i in range(len(x)) if i not in train_no[i]]]
+TestData = x[[j for j in range(len(x)) if j not in FAE_train_no_niter[i]]]
 input_plt = TestData.detach().numpy()
 FAE_pred_plt = FAE_pred_test_niter[i].detach().numpy()
 
@@ -359,3 +398,7 @@ for m in range(0, len(FAE_pred_plt)):
 plt.title("Output Curves")
 plt.show()
 
+# Perform paired t-test
+stats.ttest_rel(FAE_identity_pred_test_acc_mean_niter, FPCA_pred_test_acc_mean_niter)
+stats.ttest_rel(classification_FAE_identity_test_niter, classification_FPCA_test_niter)
+stats.ttest_rel(clustering_FAE_identity_acc_mean_niter, clustering_FPCA_acc_mean_niter)

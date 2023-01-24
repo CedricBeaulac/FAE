@@ -23,11 +23,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.cluster import KMeans
 
-os.chdir('C:/FAE')
+# os.chdir('C:/FAE')
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 if not os.getcwd() in sys.path:
     sys.path.append(os.getcwd())
 import DataGenerator
 from DataGenerator import *
+import DataGenerator_NN
+from DataGenerator_NN import *
 import Functions
 from Functions import *
 
@@ -56,6 +59,34 @@ label = np.repeat(0,nc*classes)
 for j in range(1,classes):
     label[(j*nc):(j+1)*nc] = np.repeat(j,nc)
 
+# Simulate Data using NN DataGenerator
+n_sample = 1000
+n_class = 3
+tpts_raw = np.linspace(0,1,21)
+sim_x, sim_x_noise, sim_labels = DataGenerateor_NN(n_sample=n_sample, n_class=n_class, n_rep=5, class_weight=[.3,.3,.4],
+                                                   n_basis = 10, basis_type = "BSpline", decoder_hidden = [10],
+                                                   time_grid = tpts_raw,activation_function = nn.Sigmoid(), noise=1)
+x_raw = sim_x_noise.detach().numpy()
+label =sim_labels.copy().astype(int64)
+# Simulate Data using NN DataGenerator for diff dist
+mean = [[0,0,0,0,0], [0,0,0,0,0], [2,1,0,1,2]]
+cov = [[[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
+       [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
+       [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]]]
+tpts_raw = np.linspace(0,1,21)
+sim_x_dist, sim_x_noise_dist, sim_labels_dist  = DataGenerateor_Dist_NN(n_sample_per_class=400, n_class=3, n_rep=5,
+                                                                        mean=mean, cov=cov,
+                                                                        n_basis = 10, basis_type = "BSpline",
+                                                                        decoder_hidden = [10],
+                                                                        time_grid = np.linspace(0,1,21),
+                                                                        activation_function = nn.Sigmoid(),
+                                                                        noise=1)
+x_raw = sim_x_noise_dist.detach().numpy()
+label =sim_labels_dist.copy().astype(int64)
+
+#####################################
+# Pre-process Data sets
+#####################################
 # Prepare numpy/tensor data
 x_np = np.array(x_raw).astype(float)
 x = torch.tensor(x_np).float()
@@ -73,12 +104,15 @@ n_tpts = len(tpts)
 #####################################
 # Perform FPCA
 #####################################
-niter = 20
-seed(1432)
-niter_seed = random.sample(range(5000), niter)
+# niter = 20
+# seed(1432)
+# niter_seed = random.sample(range(5000), niter)
+niter = 10
+seed(743)
+niter_seed = random.sample(range(1000), niter)
 
 # Set up parameters
-n_basis = 20
+n_basis = 15
 n_rep = 5
 basis_type = "Bspline"
 if  len(tpts)*0.9 < n_basis:
@@ -190,9 +224,23 @@ for i in range(niter):
     clustering_FPCA_acc_mean_niter.append(mean(acc_list_FPCA))
     clustering_FPCA_acc_sd_niter.append(std(acc_list_FPCA))
 
+# Print for result tables
+print("--- FPCA Results --- \n"
+      f"Train Pred Acc Mean: {mean(FPCA_pred_train_acc_mean_niter):.4f}; "
+      f"Train Pred Acc SD: {std(FPCA_pred_train_acc_mean_niter):.4f}; \n"
+      f"Test Pred Acc Mean: {mean(FPCA_pred_test_acc_mean_niter):.4f}; "
+      f"Test Pred Acc SD: {std(FPCA_pred_test_acc_mean_niter):.4f}; \n"
+      f"Train Classification Acc Mean: {mean(classification_FPCA_train_niter):.4f}; "
+      f"Train Classification Acc SD: {std(classification_FPCA_train_niter):.4f}; \n"
+      f"Test Classification Acc Mean: {mean(classification_FPCA_test_niter):.4f}; "
+      f"Test Classification Acc SD: {std(classification_FPCA_test_niter):.4f}; \n"
+      f"Clustering Acc Mean (by clusters): {np.around(mean(clustering_FPCA_acc_niter, axis=0), 4)};\n" 
+      #[round(i, 4) for i in mean(clustering_FPCA_acc_niter, axis=0)] or [f"{num:.4f}" for num in mean(clustering_FPCA_acc_niter, axis=0)]
+      f"Overall Clustering Acc Mean: {mean(clustering_FPCA_acc_mean_niter):.4f};")
+
 # Plot of raw curves vs. recovered curves for the i-th iteration
 i=1
-TestData = x[[i for i in range(len(x)) if i not in train_no[i]]]
+TestData = x[[j for j in range(len(x)) if j not in FPCA_train_no_niter[i]]]
 input_plt = TestData.detach().numpy()
 plt.figure(4, figsize=(10, 20))
 plt.subplot(211)

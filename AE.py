@@ -33,10 +33,13 @@ import random
 from random import seed
 
 os.chdir('C:/FAE')
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 if not os.getcwd() in sys.path:
     sys.path.append(os.getcwd())
 import DataGenerator
 from DataGenerator import *
+import DataGenerator_NN
+from DataGenerator_NN import *
 import Functions
 from Functions import *
 #####################################
@@ -52,7 +55,7 @@ class AE(nn.Module):
         self.fc3 = nn.Linear(n_rep, 10)
         # self.fc34 = nn.Linear(25,50)
         self.fc4 = nn.Linear(10, n_tpts)
-        self.activation = nn.Identity()
+        self.activation = nn.Sigmoid()
 
         # initialize the weights to a specified, constant value
         if (weight_std is not None):
@@ -129,12 +132,23 @@ tpts = torch.tensor(np.array(tpts_rescale))
 n_tpts = len(tpts)
 # tpts = np.linspace(0,1,num=10)
 
+# Simulate data
+nc=500
+classes = 10
+tpts = np.linspace(0,1,21)
+x_raw,curves = SmoothDataGenerator(nc, tpts,classes,5)
+label = np.tile(range(0,classes),nc)
+
 #####################################
 # Perform AE (Model Training)
 #####################################
-niter = 20
-seed(1432)
-niter_seed = random.sample(range(5000), niter)
+# niter = 20
+# seed(1432)
+# niter_seed = random.sample(range(5000), niter)
+
+niter = 10
+seed(743)
+niter_seed = random.sample(range(1000), niter)
 
 # Set up parameters
 n_rep = 5
@@ -156,12 +170,16 @@ clustering_AE_acc_niter = []
 clustering_AE_acc_mean_niter = []
 clustering_AE_acc_sd_niter = []
 
+# Set up NN hyperparameters:
+epochs = 1000
+batch_size = 32
+
 # Start iterations
 for i in range(niter):
     # Split training/test set
     TrainData, TestData, TrainLabel, TestLabel, train_no = train_test_split(x, label, split_rate =0.8, seed_no=niter_seed[i])
     # Define data loaders; DataLoader is used to load the dataset for training
-    train_loader = torch.utils.data.DataLoader(TrainData, batch_size=32, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(TrainData, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(TestData)
 
     # Model Initialization
@@ -175,7 +193,7 @@ for i in range(niter):
     # Set to CPU/GPU
     device = torch.device("cpu")  # (?)should be CUDA when running on the big powerfull server
 
-    epochs = 10000
+    epochs = epochs
     # AE_losses = []
 
     # Train model
@@ -214,7 +232,7 @@ for i in range(niter):
     # Classification accuracy on the test set
     classification_AE_test_niter.append(AE_classifier.score(AE_reps_test.detach().numpy(), TestLabel))
     # Classification accuracy on the training set
-    classification_FAE_train_niter.append(AE_classifier.score(AE_reps_train.detach().numpy(), TrainLabel))
+    classification_AE_train_niter.append(AE_classifier.score(AE_reps_train.detach().numpy(), TrainLabel))
 
     ## Clustering
     optimal_n_cluster = len(np.unique(label))  # len(set(label))
@@ -231,6 +249,23 @@ for i in range(niter):
     clustering_AE_acc_niter.append(acc_list_AE)
     clustering_AE_acc_mean_niter.append(mean(acc_list_AE))
     clustering_AE_acc_sd_niter.append(std(acc_list_AE))
+
+
+# Print for result tables
+print("--- AE-Nonlinear Results --- \n"
+      f"Train Pred Acc Mean: {mean(AE_pred_train_acc_mean_niter):.4f}; "
+      f"Train Pred Acc SD: {std(AE_pred_train_acc_mean_niter):.4f}; \n"
+      f"Test Pred Acc Mean: {mean(AE_pred_test_acc_mean_niter):.4f}; "
+      f"Test Pred Acc SD: {std(AE_pred_test_acc_mean_niter):.4f}; \n"
+      f"Train Classification Acc Mean: {mean(classification_AE_train_niter):.4f}; "
+      f"Train Classification Acc SD: {std(classification_AE_train_niter):.4f}; \n"
+      f"Test Classification Acc Mean: {mean(classification_AE_test_niter):.4f}; "
+      f"Test Classification Acc SD: {std(classification_AE_test_niter):.4f}; \n"
+      f"Clustering Acc Mean (by clusters): {np.around(mean(clustering_AE_acc_niter, axis=0), 4)};\n" 
+      #[round(i, 4) for i in mean(clustering_AE_acc_niter, axis=0)] or [f"{num:.4f}" for num in mean(clustering_AE_acc_niter, axis=0)]
+      f"Overall Clustering Acc Mean: {mean(clustering_AE_acc_mean_niter):.4f};")
+
+stats.ttest_rel(classification_AE_test_niter, classification_FPCA_test_niter)
 
 # If activation function is nn.Identity()
 AE_identity_train_no_niter = AE_train_no_niter.copy()
@@ -249,9 +284,22 @@ clustering_AE_identity_acc_niter = clustering_AE_acc_niter.copy()
 clustering_AE_identity_acc_mean_niter = clustering_AE_acc_mean_niter.copy()
 clustering_AE_identity_acc_sd_niter = clustering_AE_acc_sd_niter.copy()
 
+# Print for result tables
+print("--- AE-Indentity Results --- \n"
+      f"Train Pred Acc Mean: {mean(AE_identity_pred_train_acc_mean_niter):.4f}; "
+      f"Train Pred Acc SD: {std(AE_identity_pred_train_acc_mean_niter):.4f}; \n"
+      f"Test Pred Acc Mean: {mean(AE_identity_pred_test_acc_mean_niter):.4f}; "
+      f"Test Pred Acc SD: {std(AE_identity_pred_test_acc_mean_niter):.4f}; \n"
+      f"Train Classification Acc Mean: {mean(classification_AE_identity_train_niter):.4f}; "
+      f"Train Classification Acc SD: {std(classification_AE_identity_train_niter):.4f}; \n"
+      f"Test Classification Acc Mean: {mean(classification_AE_identity_test_niter):.4f}; "
+      f"Test Classification Acc SD: {std(classification_AE_identity_test_niter):.4f}; \n"
+      f"Clustering Acc Mean (by clusters): {np.around(mean(clustering_AE_identity_acc_niter, axis=0), 4)};\n" 
+      f"Overall Clustering Acc Mean: {mean(clustering_AE_identity_acc_mean_niter):.4f};")
+
 # Plot of Input (Observed Curves) & Output Curves (Predicted Curves)
 i=1
-TestData = x[[i for i in range(len(x)) if i not in train_no[i]]]
+TestData = x[[j for j in range(len(x)) if j not in AE_train_no_niter[i]]]
 input_plt = TestData.detach().numpy()
 AE_pred_plt = AE_pred_test_niter[i].detach().numpy()
 

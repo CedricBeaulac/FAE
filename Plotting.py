@@ -4,6 +4,7 @@ from numpy import *
 import seaborn as sns
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 # matplotlib.use('TkAgg')
 import skfda as fda
 from skfda import representation as representation
@@ -22,7 +23,6 @@ from random import seed
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.cluster import KMeans
-
 
 # Plot of Input (Observed Curves) & Output Curves (Predicted Curves)
 i=1
@@ -114,3 +114,108 @@ for m in range(0, len(FAE_all)):
     plt.plot(tpts, FAE_all[m], FAE_color[kmeans_labels_FAE[m]])
 plt.title("FAE-representation Labelling")
 plt.show()
+
+##########################################
+#### Plot Simulated Data Sets
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
+if not os.getcwd() in sys.path:
+    sys.path.append(os.getcwd())
+import DataGenerator_NN
+from DataGenerator_NN import *
+import Functions
+from Functions import *
+
+sim_x, sim_x_noise, sim_labels  = DataGenerateor_NN(n_sample=1000, n_class=3, n_rep=5, class_weight=[.2,.3,.5],
+                                                    n_basis = 10, basis_type = "BSpline", decoder_hidden = [10],
+                                                    time_grid = np.linspace(0,1,21),activation_function = nn.Sigmoid(),
+                                                    noise=1)
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
+n_class=3
+time_grid = np.linspace(0,1,21)
+with PdfPages("Datasets/Simulations/sim_x_NN.pdf") as pdf:
+    # Plot simulated curves
+    sim_x_plt = sim_x.detach().numpy()
+    sim_x_noise_plt = sim_x_noise.detach().numpy()
+    plt.figure(1)
+    for i in range(0, len(sim_x_plt)):
+    # for m in id_plt:
+        plt.plot(time_grid, sim_x_plt[i])
+    plt.title("Simulated Curves")
+    pdf.savefig()
+    # plt.show()
+    plt.close()
+
+    plt.figure(2)
+    for i in range(0, len(sim_x_noise_plt)):
+    # for m in id_plt:
+        plt.plot(time_grid, sim_x_noise_plt[i])
+    plt.title("Simulated Curves with Noise")
+    pdf.savefig()
+    # plt.show()
+    plt.close()
+
+    label_list = []
+    # Plot simulated curves by class
+    for j in range(n_class):
+        label_list.append([i for i in range(len(sim_labels)) if sim_labels[i] == j])
+        sim_x_label_temp = sim_x_noise[label_list[j]].detach().numpy()
+        plt.figure(j)
+        for i in range(0, len(sim_x_label_temp)):
+        # for m in id_plt:
+            plt.plot(time_grid, sim_x_label_temp[i])
+        plt.title(f"Simulated Curves with Noise - Group {j + 1}/{n_class}")
+        pdf.savefig()
+        # plt.show()
+        plt.close()
+
+mean = [[0,0,0,0,0], [0,0,0,0,0], [2,1,0,1,2]]
+cov = [[[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
+       [[2,0,0,0,0], [0,2,0,0,0], [0,0,2,0,0], [0,0,0,2,0], [0,0,0,0,2]],
+       [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]]]
+
+sim_x_dist, sim_x_noise_dist, sim_labels_dist  = DataGenerateor_Dist_NN(n_sample_per_class=400, n_class=3, n_rep=5,
+                                                                        mean=mean, cov=cov,
+                                                                        n_basis = 10, basis_type = "BSpline",
+                                                                        decoder_hidden = [10],
+                                                                        time_grid = np.linspace(0,1,21),
+                                                                        activation_function = nn.Sigmoid(),
+                                                                        noise=1)
+
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
+with PdfPages("Datasets/Simulations/sim_x_distNN.pdf") as pdf:
+    # Plot simulated curves
+    sim_x_dist_plt = sim_x_dist.detach().numpy()
+    sim_x_noise_dist_plt = sim_x_noise_dist.detach().numpy()
+    time_grid = np.linspace(0, 1, 21)
+
+    plt.figure(1)
+    for i in range(0, len(sim_x_dist_plt)):
+        # for m in id_plt:
+        plt.plot(time_grid, sim_x_dist_plt[i])
+    plt.title("Simulated Curves")
+    pdf.savefig()
+    # plt.show()
+    plt.close()
+    plt.figure(2)
+    for i in range(0, len(sim_x_noise_dist_plt)):
+        # for m in id_plt:
+        plt.plot(time_grid, sim_x_noise_dist_plt[i])
+    plt.title("Simulated Curves with Noise")
+    pdf.savefig()
+    # plt.show()
+    plt.close()
+
+    label_dist_list = []
+    # Plot simulated curves by class
+    n_class = 3
+    for j in range(n_class):
+        label_dist_list.append([i for i in range(len(sim_labels_dist)) if sim_labels_dist[i] == (j + 1)])
+        sim_x_label_temp = sim_x_noise_dist[label_dist_list[j]].detach().numpy()
+        plt.figure(j)
+        for i in range(0, len(sim_x_label_temp)):
+            # for m in id_plt:
+            plt.plot(time_grid, sim_x_label_temp[i])
+        plt.title(f"Simulated Curves with Noise - Group {j + 1}/{n_class}")
+        pdf.savefig()
+        # plt.show()
+        plt.close()

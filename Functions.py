@@ -2,6 +2,7 @@
 This script contains self-defined functions ...
 """
 import random
+from random import seed
 import numpy as np
 import torch
 import torch.nn.init as init
@@ -26,7 +27,7 @@ def train_test_split(data, label, split_rate, seed_no):
 
     TrainData = data[train_no]
     TrainLabel = label[train_no]
-    if split.rate == 1:
+    if split_rate == 1:
         TestData = data
         TestLabel= label
     else:

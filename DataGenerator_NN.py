@@ -173,7 +173,7 @@ def DataGenerateor_NN(n_sample=500, n_class=3, n_rep=5, class_weight=[.2,.3,.5],
     #
     # sim_x_noise = torch.matmul(coef_noise, basis_fc)
 
-    return (sim_x, sim_x_noise, sim_labels)
+    return (sim_x, sim_x_noise, sim_labels, sim_reps)
 
 
 def DataGenerateor_Dist_NN(n_sample_per_class=200, n_class=3, n_rep=5, mean=None, cov=None,
@@ -326,6 +326,6 @@ def DataGenerateor_Dist_NN(n_sample_per_class=200, n_class=3, n_rep=5, mean=None
     #
     # sim_x_noise = torch.matmul(coef_noise, basis_fc)
 
-    return (sim_x, sim_x_noise, sim_labels)
+    return (sim_x, sim_x_noise, sim_labels, sim_reps)
 
 

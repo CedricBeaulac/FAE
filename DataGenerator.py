@@ -48,4 +48,4 @@ def SmoothDataGenerator(nc=250, tpts = np.linspace(0,1,21),classes=4,noise=2):
     bss_evalc = bss.evaluate(np.linspace(0,1,201), derivative=0)
     bss_fctc = bss_evalc[:, :, 0]
     curves = matmul(Changes,bss_fctc)
-    return(data,transpose(curves))    
+    return(data, transpose(curves))

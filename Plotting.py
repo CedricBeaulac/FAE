@@ -23,6 +23,18 @@ from random import seed
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.cluster import KMeans
+import itertools
+
+# os.chdir('C:/FAE')
+os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
+if not os.getcwd() in sys.path:
+    sys.path.append(os.getcwd())
+import DataGenerator
+from DataGenerator import *
+import DataGenerator_NN
+from DataGenerator_NN import *
+import Functions
+from Functions import *
 
 # Plot of Input (Observed Curves) & Output Curves (Predicted Curves)
 i=1
@@ -57,9 +69,8 @@ plt.show()
 
 
 # Curves of raw, FAE-recoverd, FPCA-recoverd, AE-recovered for some selected subjects
-import matplotlib.backends.backend_pdf
 plt.ioff()
-pdf = matplotlib.backends.backend_pdf.PdfPages("Datasets/ElNino/ElNino_2layers(20-10-5)_nonlinear(Softplus)_+AE2.pdf")
+pdf = PdfPages("Datasets/ElNino/ElNino_2layers(20-10-5)_nonlinear(Softplus)_+AE2.pdf")
 # pdf = matplotlib.backends.backend_pdf.PdfPages("Datasets/tecator/tecator_2layer(50-40-5)_nbasis80_nfpcabasis10_linear_0.2Test.pdf")
 for i in range(len(input_plt)): ## will open an empty extra figure :(\
     fig = plt.figure()
@@ -125,14 +136,14 @@ from DataGenerator_NN import *
 import Functions
 from Functions import *
 
-sim_x, sim_x_noise, sim_labels  = DataGenerateor_NN(n_sample=1000, n_class=3, n_rep=5, class_weight=[.2,.3,.5],
-                                                    n_basis = 10, basis_type = "BSpline", decoder_hidden = [10],
-                                                    time_grid = np.linspace(0,1,21),activation_function = nn.Sigmoid(),
+sim_x, sim_x_noise, sim_labels, sim_reps = DataGenerateor_NN(n_sample=1000, n_class=3, n_rep=5, class_weight=[.3,.4,.3],
+                                                    n_basis = 20, basis_type = "BSpline", decoder_hidden = [10],
+                                                    time_grid = np.linspace(0,1,51),activation_function = nn.Sigmoid(),
                                                     noise=1)
 os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 n_class=3
-time_grid = np.linspace(0,1,21)
-with PdfPages("Datasets/Simulations/sim_x_NN.pdf") as pdf:
+time_grid = np.linspace(0,1,51)
+with PdfPages("Datasets/Simulations/sim_x_NN_sim6.pdf") as pdf:
     # Plot simulated curves
     sim_x_plt = sim_x.detach().numpy()
     sim_x_noise_plt = sim_x_noise.detach().numpy()
@@ -168,30 +179,48 @@ with PdfPages("Datasets/Simulations/sim_x_NN.pdf") as pdf:
         # plt.show()
         plt.close()
 
-mean = [[0,0,0,0,0], [0,0,0,0,0], [2,1,0,1,2]]
-cov = [[[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
-       [[2,0,0,0,0], [0,2,0,0,0], [0,0,2,0,0], [0,0,0,2,0], [0,0,0,0,2]],
-       [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]]]
+with PdfPages("Datasets/Simulations/sim_reps_NN_sim6.pdf") as pdf:
+    com_list = list(itertools.combinations(range(shape(sim_reps)[1]),2))
+    for d in range(len(com_list)):
+        rep1 = sim_reps[:,com_list[d][0]]
+        rep2 = sim_reps[:,com_list[d][1]]
+        # plt.figure(1)
+        plt.scatter(rep1, rep2, c = sim_labels)
+        # plt.legend(handles=unique(sim_labels), loc="upper right", title="Class")
+        plt.title(f"Scatterplot of Reps {com_list[d][0]+1} & {com_list[d][1]+1}")
+        plt.xlabel(f"Reps {com_list[d][0]+1}")
+        plt.ylabel(f"Reps {com_list[d][1]+1}")
+        pdf.savefig()
+        # plt.show()
+        plt.close()
 
-sim_x_dist, sim_x_noise_dist, sim_labels_dist  = DataGenerateor_Dist_NN(n_sample_per_class=400, n_class=3, n_rep=5,
+
+########
+mean = [[2,1,2,1,0], [-4,-4,-4,-4,-4], [3,3,3,3,3]]
+cov = [[[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
+       [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
+       [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]]]
+n_class=3
+time_grid = np.linspace(0,1,21)
+sim_x_dist, sim_x_noise_dist, sim_labels_dist, sim_reps_dist  = DataGenerateor_Dist_NN(n_sample_per_class=400, n_class=3, n_rep=5,
                                                                         mean=mean, cov=cov,
                                                                         n_basis = 10, basis_type = "BSpline",
                                                                         decoder_hidden = [10],
-                                                                        time_grid = np.linspace(0,1,21),
+                                                                        time_grid = time_grid,
                                                                         activation_function = nn.Sigmoid(),
-                                                                        noise=1)
-
+                                                                        noise=3)
 os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
-with PdfPages("Datasets/Simulations/sim_x_distNN.pdf") as pdf:
+with PdfPages("Datasets/Simulations/sim_x_distNN_sim7.pdf") as pdf:
     # Plot simulated curves
     sim_x_dist_plt = sim_x_dist.detach().numpy()
     sim_x_noise_dist_plt = sim_x_noise_dist.detach().numpy()
-    time_grid = np.linspace(0, 1, 21)
+    time_grid = time_grid
+    color = ["y", "b", "g", "r"]
 
     plt.figure(1)
     for i in range(0, len(sim_x_dist_plt)):
         # for m in id_plt:
-        plt.plot(time_grid, sim_x_dist_plt[i])
+        plt.plot(time_grid, sim_x_dist_plt[i], color[sim_labels_dist[i]], alpha=0.1)
     plt.title("Simulated Curves")
     pdf.savefig()
     # plt.show()
@@ -199,7 +228,7 @@ with PdfPages("Datasets/Simulations/sim_x_distNN.pdf") as pdf:
     plt.figure(2)
     for i in range(0, len(sim_x_noise_dist_plt)):
         # for m in id_plt:
-        plt.plot(time_grid, sim_x_noise_dist_plt[i])
+        plt.plot(time_grid, sim_x_noise_dist_plt[i], color[sim_labels_dist[i]], alpha=0.1)
     plt.title("Simulated Curves with Noise")
     pdf.savefig()
     # plt.show()
@@ -219,3 +248,20 @@ with PdfPages("Datasets/Simulations/sim_x_distNN.pdf") as pdf:
         pdf.savefig()
         # plt.show()
         plt.close()
+
+
+with PdfPages("Datasets/Simulations/sim_reps_distNN_sim7.pdf") as pdf:
+    com_list_dist = list(itertools.combinations(range(shape(sim_reps_dist)[1]),2))
+    for d in range(len(com_list_dist)):
+        rep1 = sim_reps_dist[:,com_list[d][0]]
+        rep2 = sim_reps_dist[:,com_list[d][1]]
+        plt.scatter(rep1, rep2, c = sim_labels_dist)
+        plt.title(f"Scatterplot of Reps {com_list_dist[d][0]+1} & {com_list_dist[d][1]+1}")
+        plt.xlabel(f"Reps {com_list_dist[d][0]+1}")
+        plt.ylabel(f"Reps {com_list_dist[d][1]+1}")
+        pdf.savefig()
+        # plt.show()
+        plt.close()
+
+sim4_x_dist, sim4_x_noise_dist, sim4_labels_dist, sim4_reps_dist= sim_x_dist, sim_x_noise_dist, sim_labels_dist, sim_reps_dist
+sim6_x, sim6_x_noise, sim6_labels, sim6_reps = sim_x, sim_x_noise, sim_labels, sim_reps

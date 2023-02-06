@@ -61,29 +61,29 @@ for j in range(1,classes):
 
 # Simulate Data using NN DataGenerator
 n_sample = 1000
-n_class = 3
-tpts_raw = np.linspace(0,1,21)
+n_class =  3
+tpts_raw = np.linspace(0,1,51)
 sim_x, sim_x_noise, sim_labels = DataGenerateor_NN(n_sample=n_sample, n_class=n_class, n_rep=5, class_weight=[.3,.3,.4],
                                                    n_basis = 10, basis_type = "BSpline", decoder_hidden = [10],
                                                    time_grid = tpts_raw,activation_function = nn.Sigmoid(), noise=1)
 x_raw = sim_x_noise.detach().numpy()
 label =sim_labels.copy().astype(int64)
 # Simulate Data using NN DataGenerator for diff dist
+tpts_raw = np.linspace(0,1,101)
 mean = [[0,0,0,0,0], [0,0,0,0,0], [2,1,0,1,2]]
 cov = [[[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
        [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]],
        [[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1]]]
-tpts_raw = np.linspace(0,1,21)
-sim_x_dist, sim_x_noise_dist, sim_labels_dist  = DataGenerateor_Dist_NN(n_sample_per_class=400, n_class=3, n_rep=5,
+sim_x_dist, sim_x_noise_dist, sim_labels_dist, sim_reps_dist   = DataGenerateor_Dist_NN(n_sample_per_class=400, n_class=3, n_rep=5,
                                                                         mean=mean, cov=cov,
                                                                         n_basis = 10, basis_type = "BSpline",
                                                                         decoder_hidden = [10],
-                                                                        time_grid = np.linspace(0,1,21),
+                                                                        time_grid = tpts_raw,
                                                                         activation_function = nn.Sigmoid(),
                                                                         noise=1)
 x_raw = sim_x_noise_dist.detach().numpy()
 label =sim_labels_dist.copy().astype(int64)
-
+tpts_raw = np.linspace(0,1,21)
 #####################################
 # Pre-process Data sets
 #####################################
@@ -108,7 +108,7 @@ n_tpts = len(tpts)
 # seed(1432)
 # niter_seed = random.sample(range(5000), niter)
 niter = 10
-seed(743)
+seed(673)
 niter_seed = random.sample(range(1000), niter)
 
 # Set up parameters
@@ -247,11 +247,11 @@ plt.subplot(211)
 for m in range(0, len(input_plt)):
 # for m in id_plt:
     plt.plot(tpts, input_plt[m])
-plt.title("Input Curves")
+plt.title("Raw Curves")
 plt.subplot(212)
 for m in range(0, len(FPCA_pred_test_niter[i])):
 # for m in id_plt:
     plt.plot(tpts, FPCA_pred_test_niter[i][m])
-plt.title("Output Curves")
+plt.title("FPCA-predicted Curves")
 plt.show()
 

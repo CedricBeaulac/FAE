@@ -44,7 +44,7 @@ from scipy import stats
 import statistics
 from statistics import stdev
 
-os.chdir('C:/FAE')
+# os.chdir('C:/FAE')
 os.chdir('C:/Users/Sidi/Desktop/FAE/FAE')
 if not os.getcwd() in sys.path:
     sys.path.append(os.getcwd())
@@ -68,12 +68,14 @@ from Functions import *
 class FAE_vanilla(nn.Module):
     def __init__(self, weight_std=None):
         super(FAE_vanilla, self).__init__()
-        self.fc1 = nn.Linear(n_basis, 10,bias=False)
-        self.fc2 = nn.Linear(10, n_rep, bias=False)
+        self.fc1 = nn.Linear(n_basis, 50,bias=False)
+        self.fc11 = nn.Linear(50, 25, bias=False)
+        # self.fc12 = nn.Linear(25, 10, bias=False)
+        self.fc2 = nn.Linear(25, n_rep, bias=False)
         # self.fc1 = nn.Linear(n_basis, n_rep, bias=False)
-        self.fc3 = nn.Linear(n_rep, 10, bias=False)
+        self.fc3 = nn.Linear(n_rep, 15, bias=False)
         # self.fc3 = nn.Linear(n_rep, n_basis, bias=False)
-        self.fc4 = nn.Linear(10, n_basis, bias=False)
+        self.fc4 = nn.Linear(15, n_basis, bias=False)
         self.activation = nn.Sigmoid()
 
         # initialize the weights to a specified, constant value
@@ -87,6 +89,8 @@ class FAE_vanilla(nn.Module):
         feature = self.Project(x, basis_fc)
         # rep = self.activation(self.fc1(feature))
         t1 = self.activation(self.fc1(feature))
+        t1 = self.activation(self.fc11(t1))
+        # t1 = self.activation(self.fc12(t1))
         rep = self.fc2(t1)
         t2 = self.activation(self.fc3(rep))
         coef = self.fc4(t2)
@@ -212,7 +216,7 @@ seed(743)
 niter_seed = random.sample(range(1000), niter)
 
 # Set up parameters
-n_basis = 15
+n_basis = 30
 n_rep = 5
 lamb = 0
 pen = "diff"
@@ -244,7 +248,7 @@ clustering_FAE_acc_mean_niter = []
 clustering_FAE_acc_sd_niter = []
 
 # Set up NN hyperparameters:
-epochs = 2000
+epochs = 2500
 batch_size = 32
 
 # Start iterations
@@ -347,6 +351,7 @@ print("--- FAE-Nonlinear Results --- \n"
       f"Overall Clustering Acc Mean: {mean(clustering_FAE_acc_mean_niter):.4f};")
 
 stats.ttest_rel(classification_FAE_test_niter, classification_FPCA_test_niter)
+stats.ttest_rel(classification_FAE_test_niter, classification_AE_test_niter)
 
 # If activation function is nn.Identity()
 FAE_identity_train_no_niter = FAE_train_no_niter.copy()
@@ -385,17 +390,17 @@ TestData = x[[j for j in range(len(x)) if j not in FAE_train_no_niter[i]]]
 input_plt = TestData.detach().numpy()
 FAE_pred_plt = FAE_pred_test_niter[i].detach().numpy()
 
-plt.figure(3, figsize=(10, 20))
+plt.figure(2, figsize=(10, 20))
 plt.subplot(211)
 for m in range(0, len(input_plt)):
 # for m in id_plt:
     plt.plot(tpts, input_plt[m])
-plt.title("Input Curves")
+plt.title("Raw Curves")
 plt.subplot(212)
 for m in range(0, len(FAE_pred_plt)):
 # for m in id_plt:
     plt.plot(tpts, FAE_pred_plt[m])
-plt.title("Output Curves")
+plt.title("FAE-predicted Curves")
 plt.show()
 
 # Perform paired t-test

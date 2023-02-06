@@ -50,11 +50,11 @@ class AE(nn.Module):
     def __init__(self, weight_std=None):
         super(AE, self).__init__()
         self.fc1 = nn.Linear(n_tpts, 10)
-        # self.fc12 = nn.Linear(50, 25)
-        self.fc2 = nn.Linear(10, n_rep)
-        self.fc3 = nn.Linear(n_rep, 10)
+        # self.fc12 = nn.Linear(30, 15)
+        self.fc2 = nn.Linear(25, n_rep)
+        self.fc3 = nn.Linear(n_rep, 25)
         # self.fc34 = nn.Linear(25,50)
-        self.fc4 = nn.Linear(10, n_tpts)
+        self.fc4 = nn.Linear(25, n_tpts)
         self.activation = nn.Sigmoid()
 
         # initialize the weights to a specified, constant value
@@ -66,7 +66,7 @@ class AE(nn.Module):
 
     def forward(self, x):
         h1 = self.activation(self.fc1(x))
-        # h2 = self.activation(self.fc12(h1))
+        # h1 = self.activation(self.fc12(h1))
         rep = self.fc2(h1)
         h3 = self.activation(self.fc3(rep))
         # h4 = self.activation(self.fc34(h3))
@@ -171,13 +171,14 @@ clustering_AE_acc_mean_niter = []
 clustering_AE_acc_sd_niter = []
 
 # Set up NN hyperparameters:
-epochs = 1000
+epochs = 2000
 batch_size = 32
 
 # Start iterations
 for i in range(niter):
     # Split training/test set
     TrainData, TestData, TrainLabel, TestLabel, train_no = train_test_split(x, label, split_rate =0.8, seed_no=niter_seed[i])
+    AE_train_no_niter.append(train_no)
     # Define data loaders; DataLoader is used to load the dataset for training
     train_loader = torch.utils.data.DataLoader(TrainData, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(TestData)
@@ -269,14 +270,14 @@ stats.ttest_rel(classification_AE_test_niter, classification_FPCA_test_niter)
 
 # If activation function is nn.Identity()
 AE_identity_train_no_niter = AE_train_no_niter.copy()
-AE_identity_reps_train_niter = AE_reps_train_niter.copy()
-AE_identity_reps_test_niter = AE_reps_test_niter.copy()
-AE_identity_reps_all_niter = AE_reps_all_niter.copy()
-AE_identity_pred_test_niter = AE_pred_test_niter.copy()
-AE_identity_pred_all_niter = AE_pred_all_niter.copy()
-AE_identity_pred_train_acc_mean_niter = AE_pred_train_acc_mean_niter.copy()
-AE_identity_pred_test_acc_mean_niter = AE_pred_test_acc_mean_niter.copy()
-AE_identity_pred_train_acc_sd_niter = AE_pred_train_acc_sd_niter.copy()
+AE_identity_reps_train_niter = AE_reps_train_niter[0:10].copy()
+AE_identity_reps_test_niter = AE_reps_test_niter[0:10].copy()
+AE_identity_reps_all_niter = AE_reps_all_niter[0:10].copy()
+AE_identity_pred_test_niter = AE_pred_test_niter[0:10].copy()
+AE_identity_pred_all_niter = AE_pred_all_niter[0:10].copy()
+AE_identity_pred_train_acc_mean_niter = AE_pred_train_acc_mean_niter[0:10].copy()
+AE_identity_pred_test_acc_mean_niter = AE_pred_test_acc_mean_niter[0:10].copy()
+AE_identity_pred_train_acc_sd_niter = AE_pred_train_acc_sd_niter[0:10].copy()
 AE_identity_pred_test_acc_sd_niter = AE_pred_test_acc_sd_niter.copy()
 classification_AE_identity_train_niter = classification_AE_train_niter.copy()
 classification_AE_identity_test_niter = classification_AE_test_niter.copy()
@@ -307,12 +308,12 @@ plt.figure(3, figsize=(10, 20))
 plt.subplot(211)
 for m in range(0, len(input_plt)):
 # for m in id_plt:
-    plt.plot(tpts, input_plt[m], "b")
-plt.title("Input Curves")
+    plt.plot(tpts, input_plt[m])
+plt.title("Raw Curves")
 plt.subplot(212)
 for m in range(0, len(AE_pred_plt)):
 # for m in id_plt:
     plt.plot(tpts, AE_pred_plt[m])
-plt.title("Output Curves (AE)")
+plt.title("AE-predicted Curves")
 plt.show()
 

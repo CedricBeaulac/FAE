@@ -1,5 +1,5 @@
 # FAE
-This repo contains data sets and python code for the implementations conducted in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
+This repo contains data sets and python code for the implementations described in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
 
 ### The folder **Datasets** consists of
 - The folder **RealApplication** that stores the *El Nino* data set applied in the *Real Application* section of the manuscript, including the actual observations (`ElNino_ERSST.csv`), the observed time stamp (`ElNino_ERSST_tpts.csv`) and the randomly customized labels (`ElNino_ERSST_label.csv`).
@@ -14,5 +14,5 @@ This repo contains data sets and python code for the implementations conducted i
 - `FPCA.py`: code for implementing the functional principal component analysis (FPCA) with regularly spaced functional data.
 - `Functions.py`: the self-defined functions used for running the existing and proposed methods implemented.
 - `Plotting.py`: code for creating the plots displayed in the manuscript.
-- `Read_ElNino_Data.py`: code for importing and pre-processing the El Nino data sets in the manuscript.
+- `Read_ElNino_Data.py`: code for importing and pre-processing the El Nino data set in the manuscript.
 - `Read_Sim_Data.py`: code for importing and pre-processing the simulation data sets in the manuscript.

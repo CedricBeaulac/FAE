@@ -6,13 +6,13 @@ This repo contains data sets and python code for the implementations conducted i
 - The folder **Simulation** that stores the simulation data sets applied in the *Simulation* section of the manuscript, where `sim_s2_data.txt` contains observations/time/label information scenario 1.1 and `sim_s1_data.txt` contains observations/time/label information for Scenario 1.2, 2.1 & 2.2.
 
 ### The folder **Code** consists of 
-- `AE_irregular.py`: code for implementing the conventional autoencoders (AE) with irregularly spaced functional datq
-- `AE_regular.py`: code for implementing the conventional autoencoders (AE) with regularly spaced functional data
-- `DataGenerator_NN.py`: the data generator for simulation data sets
-- `FAE_irregular.py`: code for implementing the proposed functional autoencoders (FAE) with irregularly spaced functional data
-- `FAE_regular.py`: code for implementing the proposed functional autoencoders (FAE) with regularly spaced functional data
-- `FPCA.py`: code for implementing the functional principal component analysis (FPCA) with regularly spaced functional data
-- `Functions.py`: the self-defined functions used for running the existing and proposed methods implemented
-- `Plotting.py`: code for creating the plots displayed in the manuscript
-- `Read_ElNino_Data.py`: code for importing and pre-processing the El Nino data sets in the manuscript
-- `Read_Sim_Data.py`: code for importing and pre-processing the simulation data sets in the manuscript
+- `AE_irregular.py`: code for implementing the conventional autoencoders (AE) with irregularly spaced functional data.
+- `AE_regular.py`: code for implementing the conventional autoencoders (AE) with regularly spaced functional data.
+- `DataGenerator_NN.py`: the data generator for simulation data sets.
+- `FAE_irregular.py`: code for implementing the proposed functional autoencoders (FAE) with irregularly spaced functional data.
+- `FAE_regular.py`: code for implementing the proposed functional autoencoders (FAE) with regularly spaced functional data.
+- `FPCA.py`: code for implementing the functional principal component analysis (FPCA) with regularly spaced functional data.
+- `Functions.py`: the self-defined functions used for running the existing and proposed methods implemented.
+- `Plotting.py`: code for creating the plots displayed in the manuscript.
+- `Read_ElNino_Data.py`: code for importing and pre-processing the El Nino data sets in the manuscript.
+- `Read_Sim_Data.py`: code for importing and pre-processing the simulation data sets in the manuscript.

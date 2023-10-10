@@ -1,5 +1,5 @@
 """
-This script contains the code for implementing the conventional autoencoders (AE) with irregularly spaced functional datq
+This script contains the code for implementing the conventional autoencoders (AE) with irregularly spaced functional data
 in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
 
 @author: Sidi Wu

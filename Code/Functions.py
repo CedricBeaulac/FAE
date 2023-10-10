@@ -184,10 +184,4 @@ def random_missing(data, time, num = 0, fixed_num = True, missing_col = None, te
         data_irr, time_irr, nan_ind = torch.tensor(data_irr).float(), torch.tensor(time_irr).float(), torch.tensor(nan_ind).float()
     return data_irr, time_irr, nan_ind
 
-# # Function "compute_missing_col":
-# def compute_missing_col(x, missing_col):
-#     output = np.zeros(shape=(len(x), len(missing_col)))
-#     for i in range(len(missing_col)):
-#         output[:,i] = torch.mean(x_missing[:,[missing_col[i]-1, missing_col[i]+1]], axis=1)
-#     return output
 

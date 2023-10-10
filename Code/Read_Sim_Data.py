@@ -1,5 +1,5 @@
 """
-This script contains the code for importing and pre-processing the simulation data sets in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
+This script contains the code for importing and pre-processing the El Nino data set in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
 
 @author: Sidi Wu
 """

@@ -1,9 +1,9 @@
 # FAE
-This repo contains data sets and python code for the implementations described in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
+This repo contains the data sets and python code for the implementations described in the manuscript "Autoencoders for Discrete Functional Data Representation Learning and Smoothing".
 
 ### The folder **Datasets** consists of
 - The folder **RealApplication** that stores the *El Nino* data set applied in the *Real Application* section of the manuscript, including the actual observations (`ElNino_ERSST.csv`), the observed time stamp (`ElNino_ERSST_tpts.csv`) and the randomly customized labels (`ElNino_ERSST_label.csv`).
-- The folder **Simulation** that stores the simulation data sets applied in the *Simulation* section of the manuscript, where `sim_s2_data.txt` contains observations/time/label information scenario 1.1 and `sim_s1_data.txt` contains observations/time/label information for Scenario 1.2, 2.1 & 2.2.
+- The folder **Simulation** that stores the simulation data sets applied in the *Simulation* section of the manuscript, where `sim_s2_data.txt` contains observations/time/label information for scenario 1.1 and `sim_s1_data.txt` contains observations/time/label information for scenario 1.2, 2.1 & 2.2.
 
 ### The folder **Code** consists of 
 - `AE_irregular.py`: code for implementing the conventional autoencoders (AE) with irregularly spaced functional data.

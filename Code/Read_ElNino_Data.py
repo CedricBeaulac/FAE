@@ -12,7 +12,6 @@ import os
 import torch
 
 os.chdir("~"）
-os.chdir('C:/Users/Sidi/Desktop/FAE/FAE/GitHub/Code')
 
 #####################################
 ### Real application: ElNino data set

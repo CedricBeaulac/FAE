@@ -1,5 +1,5 @@
 # FAE
-This repo contains the data sets and python code for the implementations described in the manuscript "Functional Autoencoder for Smoothing and Representation Learning".
+This repo contains the data sets and python code for the implementations described in the manuscript "Functional Autoencoder for Smoothing and Representation Learning". The manuscript is publicly available at https://link.springer.com/article/10.1007/s11222-024-10501-w.
 
 ### The folder **Datasets** consists of
 - The folder **RealApplication** that stores the *El Nino* data set applied in the *Real Application* section of the manuscript, including the actual observations (`ElNino_ERSST.csv`), the observed time stamp (`ElNino_ERSST_tpts.csv`) and the randomly customized labels (`ElNino_ERSST_label.csv`).

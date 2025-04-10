@@ -2,7 +2,7 @@
 This repo contains the data sets and python code for the implementations described in the manuscript "Functional Autoencoder for Smoothing and Representation Learning". The manuscript is publicly available at https://link.springer.com/article/10.1007/s11222-024-10501-w.
 
 ### The folder **Datasets** consists of
-- The folder **RealApplication** that stores the *El Nino* data set applied in the *Real Application* section of the manuscript, including the actual observations (`ElNino_ERSST.csv`), the observed time stamp (`ElNino_ERSST_tpts.csv`) and the randomly customized labels (`ElNino_ERSST_label.csv`).
+- The folder **RealApplication** that stores the *El Nino* data set applied in the *Real Application* section of the manuscript, including the actual observations (`ElNino_ERSST.csv`), the observed time stamp (`ElNino_ERSST_tpts.csv`) and the customized labels (`ElNino_ERSST_label.csv`).
 - The folder **Simulation** that stores the simulation data sets applied in the *Simulation* section of the manuscript, where `sim_s2_data.txt` contains observations/time/label information for scenario 1.1 and `sim_s1_data.txt` contains observations/time/label information for scenario 1.2, 2.1 & 2.2.
 
 ### The folder **Code** consists of 
